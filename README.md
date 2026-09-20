@@ -2,7 +2,7 @@
 
 PokeAssist is an iOS 27 technology prototype for testing full-display capture while Pokemon GO is frontmost. It uses ScreenCaptureKit to count captured frames, exposes the current count in a Live Activity / Dynamic Island, and performs an initial on-device Vision OCR pass for Pokemon detail and appraisal screens.
 
-Version 0.3.3 recognizes appraisal/detail screen text and combat power (`CP`/`WP`). On an appraisal screen it also measures the three visible bars and reports experimental Attack/Defense/HP values plus the total IV percentage. The analyzer converts ScreenCaptureKit's native iPhone pixel format to BGRA before measuring the bars. The first calibration is based on a confirmed `15/15/9` appraisal; more combinations still need device testing. It keeps the last meaningful Pokemon result visible after returning to PokeAssist and shows a short OCR diagnostic when no match is found. Both the host app and embedded widget extension explicitly declare Live Activity support. Before starting a new Live Activity, this version removes orphaned activities left by earlier builds and displays ActivityKit's actual state in the app. The app intentionally does not use Pokemon GO account access, automation, network uploads, or an Android-style floating overlay.
+Version 0.3.4 recognizes appraisal/detail screen text and combat power (`CP`/`WP`). On an appraisal screen it also measures the three visible bars and reports experimental Attack/Defense/HP values plus the total IV percentage. The analyzer converts ScreenCaptureKit's native iPhone pixel format to BGRA before measuring the bars. The first calibration is based on a confirmed `15/15/9` appraisal; more combinations still need device testing. It keeps the last meaningful Pokemon result visible after returning to PokeAssist and shows a short OCR diagnostic when no match is found. Both the host app and embedded widget extension explicitly declare Live Activity support. Before starting a new Live Activity, this version removes orphaned activities left by earlier builds and displays ActivityKit's actual state in the app. The build now ad-hoc seals the nested extension and its host before packaging so a sideloading tool can replace intact signatures instead of producing an invalid extension page. The app intentionally does not use Pokemon GO account access, automation, network uploads, or an Android-style floating overlay.
 
 ## Requirements
 
@@ -10,7 +10,7 @@ Version 0.3.3 recognizes appraisal/detail screen text and combat power (`CP`/`WP
 - Xcode 27 to build locally, or the included GitHub Actions workflow
 - A sideloading tool that signs the unsigned IPA with your Apple account before installation
 
-An unsigned IPA cannot be installed or launched directly on a standard iPhone. The workflow artifact is deliberately unsigned so it can be signed for the test device afterward.
+The workflow artifact has no Apple development signature and cannot be installed or launched directly on a standard iPhone. Its code is ad-hoc sealed only to preserve a valid nested-code structure; a sideloading tool must replace those seals with signatures for the test device.
 
 ## Test flow
 
@@ -27,7 +27,7 @@ If Live Activities are disabled, PokeAssist now shows that state inside the app 
 
 ## GitHub build
 
-The workflow in `.github/workflows/build-unsigned-ipa.yml` runs automatically for pushes to `main` and can also be started manually. It builds both the app and Live Activity extension with code signing disabled, packages `PokeAssist.app` as `PokeAssist-unsigned.ipa`, and uploads the IPA as a workflow artifact.
+The workflow in `.github/workflows/build-unsigned-ipa.yml` runs automatically for pushes to `main` and can also be started manually. It builds both the app and Live Activity extension without an Apple identity, ad-hoc signs nested code from the inside out, verifies the signatures both before and after packaging, then uploads `PokeAssist-unsigned.ipa` as a workflow artifact for final device signing.
 
 ## Privacy
 

@@ -49,25 +49,48 @@ jobs:
             DEVELOPMENT_TEAM='' \
             clean build
 
-      - name: Package unsigned IPA
+      - name: Prepare nested code for re-signing
         run: |
           set -euo pipefail
           app_path='build/Build/Products/Release-iphoneos/PokeAssist.app'
+          extension_path="$app_path/PlugIns/PokeAssistWidget.appex"
           test -d "$app_path"
-          test -d "$app_path/PlugIns/PokeAssistWidget.appex"
+          test -d "$extension_path"
           test "$(plutil -extract NSSupportsLiveActivities raw -o - "$app_path/Info.plist")" = "true"
-          test "$(plutil -extract NSSupportsLiveActivities raw -o - "$app_path/PlugIns/PokeAssistWidget.appex/Info.plist")" = "true"
+          test "$(plutil -extract NSSupportsLiveActivities raw -o - "$extension_path/Info.plist")" = "true"
           app_id="$(plutil -extract CFBundleIdentifier raw -o - "$app_path/Info.plist")"
-          extension_id="$(plutil -extract CFBundleIdentifier raw -o - "$app_path/PlugIns/PokeAssistWidget.appex/Info.plist")"
+          extension_id="$(plutil -extract CFBundleIdentifier raw -o - "$extension_path/Info.plist")"
           case "$extension_id" in
             "$app_id".*) ;;
             *) echo "Widget bundle ID $extension_id is not prefixed by app bundle ID $app_id"; exit 1 ;;
           esac
-          plutil -lint "$app_path/Info.plist" "$app_path/PlugIns/PokeAssistWidget.appex/Info.plist"
+          plutil -lint "$app_path/Info.plist" "$extension_path/Info.plist"
+
+          # Give every Mach-O an intact ad-hoc signature before third-party tools
+          # replace it with the user's development signature. Signing nested code
+          # first is required because the outer app seal covers the extension.
+          while IFS= read -r code_path; do
+            codesign --force --sign - --timestamp=none "$code_path"
+          done < <(find "$app_path" \( -type d -name '*.framework' -prune -print \) -o \( -type f -name '*.dylib' -print \))
+          codesign --force --sign - --timestamp=none "$extension_path"
+          codesign --force --sign - --timestamp=none "$app_path"
+
+          codesign --verify --strict --verbose=2 "$extension_path"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+
+      - name: Package re-signable IPA
+        run: |
+          set -euo pipefail
+          app_path='build/Build/Products/Release-iphoneos/PokeAssist.app'
           mkdir Payload
           cp -R "$app_path" Payload/
           ditto -c -k --sequesterRsrc --keepParent Payload PokeAssist-unsigned.ipa
           unzip -l PokeAssist-unsigned.ipa
+
+          verification_dir="$(mktemp -d)"
+          ditto -x -k PokeAssist-unsigned.ipa "$verification_dir"
+          codesign --verify --strict --verbose=2 "$verification_dir/Payload/PokeAssist.app/PlugIns/PokeAssistWidget.appex"
+          codesign --verify --deep --strict --verbose=2 "$verification_dir/Payload/PokeAssist.app"
           shasum -a 256 PokeAssist-unsigned.ipa > PokeAssist-unsigned.ipa.sha256
 
       - name: Upload unsigned IPA
