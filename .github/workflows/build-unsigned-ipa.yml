@@ -61,7 +61,7 @@ jobs:
           shasum -a 256 PokeAssist-unsigned.ipa > PokeAssist-unsigned.ipa.sha256
 
       - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: PokeAssist-unsigned-ipa
           path: |
