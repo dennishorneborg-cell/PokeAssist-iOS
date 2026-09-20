@@ -1,3 +1,4 @@
+import CoreImage
 import CoreVideo
 import Foundation
 
@@ -38,22 +39,20 @@ enum IVBarAnalyzer {
     private static let expectedBarYRatios = [0.750, 0.792, 0.835]
 
     static func analyze(pixelBuffer: CVPixelBuffer) -> PokemonIVs? {
-        guard CVPixelBufferGetPixelFormatType(pixelBuffer) == kCVPixelFormatType_32BGRA else {
-            return nil
-        }
+        guard let bgraPixelBuffer = makeBGRAPixelBuffer(from: pixelBuffer) else { return nil }
 
-        let width = CVPixelBufferGetWidth(pixelBuffer)
-        let height = CVPixelBufferGetHeight(pixelBuffer)
+        let width = CVPixelBufferGetWidth(bgraPixelBuffer)
+        let height = CVPixelBufferGetHeight(bgraPixelBuffer)
         guard width > 0, height > 0 else { return nil }
 
-        guard CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly) == kCVReturnSuccess else {
+        guard CVPixelBufferLockBaseAddress(bgraPixelBuffer, .readOnly) == kCVReturnSuccess else {
             return nil
         }
-        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+        defer { CVPixelBufferUnlockBaseAddress(bgraPixelBuffer, .readOnly) }
 
-        guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
+        guard let baseAddress = CVPixelBufferGetBaseAddress(bgraPixelBuffer) else { return nil }
         let bytes = baseAddress.assumingMemoryBound(to: UInt8.self)
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(bgraPixelBuffer)
 
         let values = expectedBarYRatios.compactMap { ratio in
             measureBar(
@@ -67,6 +66,30 @@ enum IVBarAnalyzer {
 
         guard values.count == 3 else { return nil }
         return PokemonIVs(attack: values[0], defense: values[1], stamina: values[2])
+    }
+
+    private static func makeBGRAPixelBuffer(from source: CVPixelBuffer) -> CVPixelBuffer? {
+        if CVPixelBufferGetPixelFormatType(source) == kCVPixelFormatType_32BGRA {
+            return source
+        }
+
+        let width = CVPixelBufferGetWidth(source)
+        let height = CVPixelBufferGetHeight(source)
+        var destination: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_32BGRA,
+            nil,
+            &destination
+        )
+
+        guard status == kCVReturnSuccess, let destination else { return nil }
+
+        let sourceImage = CIImage(cvPixelBuffer: source)
+        CIContext(options: [.cacheIntermediates: false]).render(sourceImage, to: destination)
+        return destination
     }
 
     private static func measureBar(
