@@ -1,0 +1,347 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B10000000000000000000001 /* PokeAssistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000001 /* PokeAssistApp.swift */; };
+		B10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000002 /* ContentView.swift */; };
+		B10000000000000000000003 /* CaptureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000003 /* CaptureManager.swift */; };
+		B10000000000000000000004 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000004 /* LiveActivityController.swift */; };
+		B10000000000000000000005 /* PokeAssistAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000005 /* PokeAssistAttributes.swift */; };
+		B10000000000000000000006 /* PokeAssistWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000006 /* PokeAssistWidgetBundle.swift */; };
+		B10000000000000000000007 /* PokeAssistLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000007 /* PokeAssistLiveActivity.swift */; };
+		B10000000000000000000008 /* PokeAssistAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000005 /* PokeAssistAttributes.swift */; };
+		B10000000000000000000009 /* PokeAssistWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = C1000000000000000000000B /* PokeAssistWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D10000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000002;
+			remoteInfo = PokeAssistWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F10000000000000000000004 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B10000000000000000000009 /* PokeAssistWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		C10000000000000000000001 /* PokeAssistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokeAssistApp.swift; sourceTree = "<group>"; };
+		C10000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C10000000000000000000003 /* CaptureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureManager.swift; sourceTree = "<group>"; };
+		C10000000000000000000004 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		C10000000000000000000005 /* PokeAssistAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokeAssistAttributes.swift; sourceTree = "<group>"; };
+		C10000000000000000000006 /* PokeAssistWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokeAssistWidgetBundle.swift; sourceTree = "<group>"; };
+		C10000000000000000000007 /* PokeAssistLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokeAssistLiveActivity.swift; sourceTree = "<group>"; };
+		C10000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C10000000000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C1000000000000000000000A /* PokeAssist.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PokeAssist.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C1000000000000000000000B /* PokeAssistWidget.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = PokeAssistWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F10000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		F10000000000000000000006 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E10000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				E10000000000000000000003 /* PokeAssist */,
+				E10000000000000000000007 /* PokeAssistWidget */,
+				E10000000000000000000008 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E10000000000000000000003 /* PokeAssist */ = {
+			isa = PBXGroup;
+			children = (
+				E10000000000000000000004 /* App */,
+				E10000000000000000000005 /* Shared */,
+				E10000000000000000000006 /* Resources */,
+			);
+			path = PokeAssist;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000004 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000001 /* PokeAssistApp.swift */,
+				C10000000000000000000002 /* ContentView.swift */,
+				C10000000000000000000003 /* CaptureManager.swift */,
+				C10000000000000000000004 /* LiveActivityController.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000005 /* Shared */ = {
+			isa = PBXGroup;
+			children = (C10000000000000000000005 /* PokeAssistAttributes.swift */, );
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000006 /* Resources */ = {
+			isa = PBXGroup;
+			children = (C10000000000000000000008 /* Info.plist */, );
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000007 /* PokeAssistWidget */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000006 /* PokeAssistWidgetBundle.swift */,
+				C10000000000000000000007 /* PokeAssistLiveActivity.swift */,
+				C10000000000000000000009 /* Info.plist */,
+			);
+			path = PokeAssistWidget;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000008 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C1000000000000000000000A /* PokeAssist.app */,
+				C1000000000000000000000B /* PokeAssistWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000001 /* PokeAssist */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1000000000000000000000B /* Build configuration list for PBXNativeTarget "PokeAssist" */;
+			buildPhases = (
+				F10000000000000000000001 /* Sources */,
+				F10000000000000000000002 /* Frameworks */,
+				F10000000000000000000003 /* Resources */,
+				F10000000000000000000004 /* Embed App Extensions */,
+			);
+			buildRules = ();
+			dependencies = (D10000000000000000000002 /* PBXTargetDependency */, );
+			name = PokeAssist;
+			productName = PokeAssist;
+			productReference = C1000000000000000000000A /* PokeAssist.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A10000000000000000000002 /* PokeAssistWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1000000000000000000000C /* Build configuration list for PBXNativeTarget "PokeAssistWidget" */;
+			buildPhases = (
+				F10000000000000000000005 /* Sources */,
+				F10000000000000000000006 /* Frameworks */,
+				F10000000000000000000007 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = PokeAssistWidget;
+			productName = PokeAssistWidget;
+			productReference = C1000000000000000000000B /* PokeAssistWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E10000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					A10000000000000000000001 = {CreatedOnToolsVersion = 27.0; };
+					A10000000000000000000002 = {CreatedOnToolsVersion = 27.0; };
+				};
+			};
+			buildConfigurationList = E1000000000000000000000A /* Build configuration list for PBXProject "PokeAssist" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base, );
+			mainGroup = E10000000000000000000002;
+			productRefGroup = E10000000000000000000008 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A10000000000000000000001 /* PokeAssist */,
+				A10000000000000000000002 /* PokeAssistWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F10000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		F10000000000000000000007 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F10000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000001 /* PokeAssistApp.swift in Sources */,
+				B10000000000000000000002 /* ContentView.swift in Sources */,
+				B10000000000000000000003 /* CaptureManager.swift in Sources */,
+				B10000000000000000000004 /* LiveActivityController.swift in Sources */,
+				B10000000000000000000005 /* PokeAssistAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000006 /* PokeAssistWidgetBundle.swift in Sources */,
+				B10000000000000000000007 /* PokeAssistLiveActivity.swift in Sources */,
+				B10000000000000000000008 /* PokeAssistAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D10000000000000000000002 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A10000000000000000000002 /* PokeAssistWidget */; targetProxy = D10000000000000000000001 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		E10000000000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		E10000000000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		E10000000000000000000012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PokeAssist/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E10000000000000000000013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PokeAssist/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E10000000000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PokeAssistWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E10000000000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PokeAssistWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E1000000000000000000000A /* Build configuration list for PBXProject "PokeAssist" */ = {isa = XCConfigurationList; buildConfigurations = (E10000000000000000000010 /* Debug */, E10000000000000000000011 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		E1000000000000000000000B /* Build configuration list for PBXNativeTarget "PokeAssist" */ = {isa = XCConfigurationList; buildConfigurations = (E10000000000000000000012 /* Debug */, E10000000000000000000013 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		E1000000000000000000000C /* Build configuration list for PBXNativeTarget "PokeAssistWidget" */ = {isa = XCConfigurationList; buildConfigurations = (E10000000000000000000014 /* Debug */, E10000000000000000000015 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = E10000000000000000000001 /* Project object */;
+}

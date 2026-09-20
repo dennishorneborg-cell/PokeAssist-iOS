@@ -1,0 +1,71 @@
+name: Build unsigned IPA
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unsigned-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build iOS 27 app
+    runs-on: xcode-27
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Validate project metadata
+        run: |
+          set -euo pipefail
+          plutil -lint PokeAssist/Resources/Info.plist PokeAssistWidget/Info.plist
+          xcodebuild -list -project PokeAssist.xcodeproj
+
+      - name: Build without code signing
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project PokeAssist.xcodeproj \
+            -scheme PokeAssist \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            AD_HOC_CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY='' \
+            DEVELOPMENT_TEAM='' \
+            clean build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          app_path='build/Build/Products/Release-iphoneos/PokeAssist.app'
+          test -d "$app_path"
+          mkdir Payload
+          cp -R "$app_path" Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload PokeAssist-unsigned.ipa
+          unzip -l PokeAssist-unsigned.ipa
+          shasum -a 256 PokeAssist-unsigned.ipa > PokeAssist-unsigned.ipa.sha256
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeAssist-unsigned-ipa
+          path: |
+            PokeAssist-unsigned.ipa
+            PokeAssist-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 14
