@@ -1,5 +1,4 @@
 import CoreMedia
-import CoreVideo
 import Foundation
 import ScreenCaptureKit
 
@@ -66,9 +65,6 @@ final class CaptureManager: NSObject, ObservableObject {
         }
 
         let configuration = SCStreamConfiguration()
-        configuration.minimumFrameInterval = CMTime(value: 1, timescale: 30)
-        configuration.queueDepth = 3
-        configuration.pixelFormat = kCVPixelFormatType_32BGRA
 
         let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
 
