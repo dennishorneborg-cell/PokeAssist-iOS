@@ -5,22 +5,30 @@ import Foundation
 final class LiveActivityController {
     private var activity: Activity<PokeAssistAttributes>?
 
-    func start(frameCount: Int, status: String, recognitionSummary: String) -> String {
+    func start(frameCount: Int, status: String, recognitionSummary: String) async -> String {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             return "Disabled in iPhone Settings"
         }
 
-        if activity == nil {
-            activity = Activity<PokeAssistAttributes>.activities.first
-        }
-
-        if activity != nil {
-            update(
+        if let activity {
+            await updateImmediately(
+                activity,
                 frameCount: frameCount,
                 status: status,
                 recognitionSummary: recognitionSummary
             )
-            return "Running"
+            return activityStatus(activity)
+        }
+
+        // Activities can outlive an app update. Never reuse an activity that was
+        // created by a build whose widget extension could not render it.
+        let orphanedActivities = Activity<PokeAssistAttributes>.activities
+        for orphanedActivity in orphanedActivities {
+            await orphanedActivity.end(nil, dismissalPolicy: .immediate)
+        }
+
+        if !orphanedActivities.isEmpty {
+            try? await Task.sleep(nanoseconds: 300_000_000)
         }
 
         let attributes = PokeAssistAttributes(sessionName: "Pokemon GO capture")
@@ -33,7 +41,8 @@ final class LiveActivityController {
 
         do {
             activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
-            return "Running"
+            guard let activity else { return "Unavailable" }
+            return activityStatus(activity)
         } catch {
             return "Unavailable: \(error.localizedDescription)"
         }
@@ -56,6 +65,30 @@ final class LiveActivityController {
         Task {
             await activity.update(content)
         }
+    }
+
+    private func updateImmediately(
+        _ activity: Activity<PokeAssistAttributes>,
+        frameCount: Int,
+        status: String,
+        recognitionSummary: String
+    ) async {
+        let state = PokeAssistAttributes.ContentState(
+            frameCount: frameCount,
+            status: status,
+            recognitionSummary: recognitionSummary
+        )
+        let content = ActivityContent(
+            state: state,
+            staleDate: Date().addingTimeInterval(10),
+            relevanceScore: 100
+        )
+
+        await activity.update(content)
+    }
+
+    private func activityStatus(_ activity: Activity<PokeAssistAttributes>) -> String {
+        "ActivityKit: \(String(describing: activity.activityState).capitalized)"
     }
 
     func end(frameCount: Int, recognitionSummary: String) {

@@ -27,20 +27,25 @@ final class CaptureManager: NSObject, ObservableObject {
         errorMessage = nil
         status = "Waiting for display selection"
         isPreparing = true
-        liveActivityStatus = liveActivityController.start(
-            frameCount: frameCount,
-            status: "Select full display",
-            recognitionSummary: latestRecognition?.summary ?? "Waiting for Pokémon GO"
-        )
 
-        var configuration = SCContentSharingPickerConfiguration()
-        configuration.showsMicrophoneControl = false
-        configuration.showsCameraControl = false
+        Task { @MainActor [weak self] in
+            guard let self else { return }
 
-        picker.defaultConfiguration = configuration
-        picker.add(self)
-        picker.isActive = true
-        picker.present()
+            self.liveActivityStatus = await self.liveActivityController.start(
+                frameCount: self.frameCount,
+                status: "Select full display",
+                recognitionSummary: self.latestRecognition?.summary ?? "Waiting for Pokémon GO"
+            )
+
+            var configuration = SCContentSharingPickerConfiguration()
+            configuration.showsMicrophoneControl = false
+            configuration.showsCameraControl = false
+
+            self.picker.defaultConfiguration = configuration
+            self.picker.add(self)
+            self.picker.isActive = true
+            self.picker.present()
+        }
     }
 
     func stopCapture() async {
@@ -85,7 +90,7 @@ final class CaptureManager: NSObject, ObservableObject {
             isPreparing = false
             status = "Capturing full display"
             latestRecognition = nil
-            liveActivityStatus = liveActivityController.start(
+            liveActivityStatus = await liveActivityController.start(
                 frameCount: 0,
                 status: "Capturing",
                 recognitionSummary: "Scanning Pokémon GO"

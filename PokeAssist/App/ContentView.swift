@@ -65,7 +65,7 @@ struct ContentView: View {
                 Spacer()
                 Text(captureManager.liveActivityStatus)
                     .font(.caption)
-                    .foregroundStyle(captureManager.liveActivityStatus == "Running" ? Color.green : Color.secondary)
+                    .foregroundStyle(captureManager.liveActivityStatus.contains("Active") ? Color.green : Color.secondary)
                     .multilineTextAlignment(.trailing)
             }
         }

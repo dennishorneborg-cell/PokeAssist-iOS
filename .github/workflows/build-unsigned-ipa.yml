@@ -57,6 +57,12 @@ jobs:
           test -d "$app_path/PlugIns/PokeAssistWidget.appex"
           test "$(plutil -extract NSSupportsLiveActivities raw -o - "$app_path/Info.plist")" = "true"
           test "$(plutil -extract NSSupportsLiveActivities raw -o - "$app_path/PlugIns/PokeAssistWidget.appex/Info.plist")" = "true"
+          app_id="$(plutil -extract CFBundleIdentifier raw -o - "$app_path/Info.plist")"
+          extension_id="$(plutil -extract CFBundleIdentifier raw -o - "$app_path/PlugIns/PokeAssistWidget.appex/Info.plist")"
+          case "$extension_id" in
+            "$app_id".*) ;;
+            *) echo "Widget bundle ID $extension_id is not prefixed by app bundle ID $app_id"; exit 1 ;;
+          esac
           plutil -lint "$app_path/Info.plist" "$app_path/PlugIns/PokeAssistWidget.appex/Info.plist"
           mkdir Payload
           cp -R "$app_path" Payload/
