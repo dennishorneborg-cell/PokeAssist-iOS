@@ -2,7 +2,7 @@
 
 PokeAssist is an iOS 27 technology prototype for testing full-display capture while Pokemon GO is frontmost. It uses ScreenCaptureKit to count captured frames, exposes the current count in a Live Activity / Dynamic Island, and performs an initial on-device Vision OCR pass for Pokemon detail and appraisal screens.
 
-Version 0.2.1 recognizes appraisal/detail screen text and combat power (`CP`/`WP`) as the first step toward IV calculation. It keeps the last meaningful Pokemon result visible after returning to PokeAssist and shows a short OCR diagnostic when no match is found. Exact IV-bar measurement is not implemented yet. The app intentionally does not use Pokemon GO account access, automation, network uploads, or an Android-style floating overlay.
+Version 0.3 recognizes appraisal/detail screen text and combat power (`CP`/`WP`). On an appraisal screen it also measures the three visible bars and reports experimental Attack/Defense/HP values plus the total IV percentage. The first calibration is based on a confirmed `15/15/9` appraisal; more combinations still need device testing. It keeps the last meaningful Pokemon result visible after returning to PokeAssist and shows a short OCR diagnostic when no match is found. The app intentionally does not use Pokemon GO account access, automation, network uploads, or an Android-style floating overlay.
 
 ## Requirements
 
@@ -20,7 +20,8 @@ An unsigned IPA cannot be installed or launched directly on a standard iPhone. T
 4. Confirm that the frame counter is increasing.
 5. Switch to Pokemon GO.
 6. Open a Pokemon detail or appraisal screen.
-7. Confirm that the PokeAssist Live Activity / Dynamic Island continues to update and shows the local OCR result.
+7. On the appraisal screen, keep all three bars visible for a few seconds.
+8. Confirm that PokeAssist reports the local OCR result and experimental Attack/Defense/HP values.
 
 If Live Activities are disabled, PokeAssist now shows that state inside the app instead of silently hiding the failure. Enable them in the iPhone settings for PokeAssist and retry.
 

@@ -86,6 +86,12 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
+                if let values = recognition.individualValues {
+                    Text("Experimental IV: Attack \(values.attack) · Defense \(values.defense) · HP \(values.stamina) · \(values.percentage)%")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.green)
+                }
+
                 if let observedText = recognition.observedText, !recognition.isPokemonResult {
                     Text("Read: \(observedText)")
                         .font(.caption2)

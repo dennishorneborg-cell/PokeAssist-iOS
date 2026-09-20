@@ -17,6 +17,7 @@ struct PokemonRecognition: Equatable, Sendable {
     let combatPower: Int?
     let confidence: Double
     let observedText: String?
+    let individualValues: PokemonIVs?
 
     var isPokemonResult: Bool {
         screen == .appraisal || screen == .pokemonDetails
@@ -46,6 +47,10 @@ struct PokemonRecognition: Equatable, Sendable {
 
         if let combatPower {
             parts.append("CP " + String(combatPower))
+        }
+
+        if let individualValues {
+            parts.append(individualValues.summary)
         }
 
         return parts.joined(separator: " · ")
@@ -120,14 +125,25 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 )
             }
 
-            return Self.classify(lines: lines)
+            let recognition = Self.classify(lines: lines)
+            guard recognition.screen == .appraisal else { return recognition }
+
+            return PokemonRecognition(
+                screen: recognition.screen,
+                pokemonName: recognition.pokemonName,
+                combatPower: recognition.combatPower,
+                confidence: recognition.confidence,
+                observedText: recognition.observedText,
+                individualValues: IVBarAnalyzer.analyze(pixelBuffer: pixelBuffer)
+            )
         } catch {
             return PokemonRecognition(
                 screen: .unknown,
                 pokemonName: nil,
                 combatPower: nil,
                 confidence: 0,
-                observedText: nil
+                observedText: nil,
+                individualValues: nil
             )
         }
     }
@@ -176,7 +192,8 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             pokemonName: pokemonName,
             combatPower: combatPower,
             confidence: confidence,
-            observedText: observedText
+            observedText: observedText,
+            individualValues: nil
         )
     }
 

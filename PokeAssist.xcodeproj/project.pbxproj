@@ -17,6 +17,7 @@
 		B10000000000000000000008 /* PokeAssistAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000005 /* PokeAssistAttributes.swift */; };
 		B10000000000000000000009 /* PokeAssistWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = C1000000000000000000000B /* PokeAssistWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		B10000000000000000000010 /* VisionFrameAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000010 /* VisionFrameAnalyzer.swift */; };
+		B10000000000000000000011 /* IVBarAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000011 /* IVBarAnalyzer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 		C1000000000000000000000A /* PokeAssist.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PokeAssist.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C1000000000000000000000B /* PokeAssistWidget.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = PokeAssistWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C10000000000000000000010 /* VisionFrameAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionFrameAnalyzer.swift; sourceTree = "<group>"; };
+		C10000000000000000000011 /* IVBarAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IVBarAnalyzer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +93,7 @@
 				C10000000000000000000003 /* CaptureManager.swift */,
 				C10000000000000000000004 /* LiveActivityController.swift */,
 				C10000000000000000000010 /* VisionFrameAnalyzer.swift */,
+				C10000000000000000000011 /* IVBarAnalyzer.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -206,6 +209,7 @@
 				B10000000000000000000004 /* LiveActivityController.swift in Sources */,
 				B10000000000000000000005 /* PokeAssistAttributes.swift in Sources */,
 				B10000000000000000000010 /* VisionFrameAnalyzer.swift in Sources */,
+				B10000000000000000000011 /* IVBarAnalyzer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -259,12 +263,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssist/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -279,12 +283,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssist/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -300,12 +304,12 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssistWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -322,12 +326,12 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssistWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
