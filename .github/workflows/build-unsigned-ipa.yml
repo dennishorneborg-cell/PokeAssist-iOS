@@ -32,6 +32,9 @@ jobs:
           plutil -lint PokeAssist/Resources/Info.plist PokeAssistWidget/Info.plist
           xcodebuild -list -project PokeAssist.xcodeproj
 
+      - name: Validate offline protection catalog
+        run: python3 tools/validate-pokemon-catalog.py
+
       - name: Build without code signing
         run: |
           set -euo pipefail

@@ -18,6 +18,7 @@ struct PokemonRecognition: Equatable, Sendable {
     let confidence: Double
     let observedText: String?
     let individualValues: PokemonIVs?
+    let protection: PokemonProtectionAssessment
 
     var isPokemonResult: Bool {
         screen == .appraisal || screen == .pokemonDetails
@@ -39,7 +40,8 @@ struct PokemonRecognition: Equatable, Sendable {
     }
 
     private func joinedSummary(prefix: String) -> String {
-        var parts = [prefix]
+        // Safety information leads because the Dynamic Island may truncate the tail.
+        var parts = [protection.compactSummary, prefix]
 
         if let pokemonName {
             parts.append(pokemonName)
@@ -134,7 +136,8 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 combatPower: recognition.combatPower,
                 confidence: recognition.confidence,
                 observedText: recognition.observedText,
-                individualValues: IVBarAnalyzer.analyze(pixelBuffer: pixelBuffer)
+                individualValues: IVBarAnalyzer.analyze(pixelBuffer: pixelBuffer),
+                protection: recognition.protection
             )
         } catch {
             return PokemonRecognition(
@@ -143,7 +146,8 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 combatPower: nil,
                 confidence: 0,
                 observedText: nil,
-                individualValues: nil
+                individualValues: nil,
+                protection: PokemonProtection.assess(pokemonName: nil)
             )
         }
     }
@@ -163,6 +167,7 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
         let combatPower = parseCombatPower(from: normalizedText)
         let pokemonName = findPokemonName(in: lines)
         let observedText = makeObservedText(from: lines)
+        let protection = PokemonProtection.assess(pokemonName: pokemonName)
 
         let screen: PokemonRecognition.Screen
         if normalizedText.contains("POKEASSIST")
@@ -193,7 +198,8 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             combatPower: combatPower,
             confidence: confidence,
             observedText: observedText,
-            individualValues: nil
+            individualValues: nil,
+            protection: protection
         )
     }
 
@@ -220,7 +226,7 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             "STAMINA", "APPRAISAL", "CANDY", "BONBON", "STARDUST", "STERNENSTAUB"
         ]
 
-        return lines
+        let candidates = lines
             .filter { line in
                 let candidate = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 let normalized = candidate.folding(
@@ -244,8 +250,9 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 }
                 return lhs.boundingBox.midY > rhs.boundingBox.midY
             }
-            .first?
-            .text
+
+        return candidates.first(where: { PokemonProtection.isKnownSpeciesName($0.text) })?.text
+            ?? candidates.first?.text
     }
 
     private static func makeObservedText(from lines: [RecognizedLine]) -> String? {

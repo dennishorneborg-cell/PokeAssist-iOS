@@ -5,6 +5,11 @@ import ScreenCaptureKit
 
 @MainActor
 final class CaptureManager: NSObject, ObservableObject {
+    private struct RecognitionIdentity: Equatable {
+        let pokemonName: String?
+        let combatPower: Int?
+    }
+
     @Published private(set) var frameCount = 0
     @Published private(set) var isCapturing = false
     @Published private(set) var isPreparing = false
@@ -20,6 +25,8 @@ final class CaptureManager: NSObject, ObservableObject {
 
     private var stream: SCStream?
     private var totalFrameCount = 0
+    private var pendingRecognitionIdentity: RecognitionIdentity?
+    private var consecutiveRecognitionMatches = 0
 
     func presentCapturePicker() {
         guard !isCapturing, !isPreparing else { return }
@@ -90,6 +97,8 @@ final class CaptureManager: NSObject, ObservableObject {
             isPreparing = false
             status = "Capturing full display"
             latestRecognition = nil
+            pendingRecognitionIdentity = nil
+            consecutiveRecognitionMatches = 0
             liveActivityStatus = await liveActivityController.start(
                 frameCount: 0,
                 status: "Capturing",
@@ -134,10 +143,35 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     private func applyRecognition(_ recognition: PokemonRecognition) {
-        guard recognition.screen != .pokeAssist else { return }
+        guard recognition.screen != .pokeAssist else {
+            pendingRecognitionIdentity = nil
+            consecutiveRecognitionMatches = 0
+            return
+        }
 
         if !recognition.isPokemonResult, latestRecognition?.isPokemonResult == true {
+            pendingRecognitionIdentity = nil
+            consecutiveRecognitionMatches = 0
             return
+        }
+
+        if recognition.isPokemonResult {
+            let identity = RecognitionIdentity(
+                pokemonName: recognition.pokemonName,
+                combatPower: recognition.combatPower
+            )
+
+            if identity == pendingRecognitionIdentity {
+                consecutiveRecognitionMatches += 1
+            } else {
+                pendingRecognitionIdentity = identity
+                consecutiveRecognitionMatches = 1
+            }
+
+            // Require the same species/CP evidence twice before presenting a
+            // protection decision. This trades a short delay for fewer OCR
+            // misclassifications while keeping unknown results fail-safe.
+            guard consecutiveRecognitionMatches >= 2 else { return }
         }
 
         guard recognition != latestRecognition else { return }

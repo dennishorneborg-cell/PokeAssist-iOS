@@ -86,6 +86,28 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
+                if recognition.isPokemonResult {
+                    Divider()
+
+                    Label(recognition.protection.headline, systemImage: recognition.protection.symbolName)
+                        .font(.headline)
+                        .foregroundStyle(
+                            recognition.protection.transferAdvice == .doNotTransfer
+                                ? Color.red
+                                : Color.orange
+                        )
+
+                    ForEach(recognition.protection.detailLines, id: \.self) { line in
+                        Text(line)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text("PokeAssist never marks a Pokémon as safe to transfer. Verify Shiny and costume indicators in Pokémon GO.")
+                        .font(.caption.bold())
+                        .foregroundStyle(.orange)
+                }
+
                 if let values = recognition.individualValues {
                     Text("Experimental IV: Attack \(values.attack) · Defense \(values.defense) · HP \(values.stamina) · \(values.percentage)%")
                         .font(.subheadline.bold())
