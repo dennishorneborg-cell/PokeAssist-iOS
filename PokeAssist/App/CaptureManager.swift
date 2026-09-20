@@ -71,7 +71,6 @@ final class CaptureManager: NSObject, ObservableObject {
         }
 
         let configuration = SCStreamConfiguration()
-        configuration.pixelFormat = kCVPixelFormatType_32BGRA
 
         let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
 
