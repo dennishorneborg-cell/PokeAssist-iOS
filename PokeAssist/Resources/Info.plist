@@ -26,6 +26,8 @@
     <string>PokeAssist analyzes frames you explicitly share to test on-device Pokemon recognition.</string>
     <key>NSSupportsLiveActivities</key>
     <true/>
+    <key>NSSupportsLiveActivitiesFrequentUpdates</key>
+    <true/>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
     <key>UILaunchScreen</key>

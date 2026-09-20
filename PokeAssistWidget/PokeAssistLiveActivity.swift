@@ -16,6 +16,10 @@ struct PokeAssistLiveActivity: Widget {
                     Text("\(context.state.frameCount.formatted()) frames · \(context.state.status)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Text(context.state.recognitionSummary)
+                        .font(.caption2)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -26,33 +30,40 @@ struct PokeAssistLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: "viewfinder.circle.fill")
+                    Text("PA")
+                        .font(.headline.bold())
                         .foregroundStyle(.green)
                 }
 
                 DynamicIslandExpandedRegion(.center) {
                     Text("PokeAssist")
                         .font(.headline)
+                        .foregroundStyle(.white)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(context.state.frameCount.formatted())
                         .font(.headline.monospacedDigit())
+                        .foregroundStyle(.white)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("Capture is running · open Pokemon GO")
+                    Text(context.state.recognitionSummary)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
                 }
             } compactLeading: {
-                Image(systemName: "viewfinder.circle.fill")
+                Text("PA")
+                    .font(.caption2.bold())
                     .foregroundStyle(.green)
             } compactTrailing: {
                 Text(context.state.frameCount.formatted())
                     .font(.caption.monospacedDigit())
+                    .foregroundStyle(.white)
             } minimal: {
-                Image(systemName: "viewfinder.circle.fill")
+                Text("P")
+                    .font(.caption2.bold())
                     .foregroundStyle(.green)
             }
             .keylineTint(.green)

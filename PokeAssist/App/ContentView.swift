@@ -9,6 +9,7 @@ struct ContentView: View {
                 VStack(spacing: 24) {
                     header
                     statusCard
+                    recognitionCard
                     controls
                     instructions
                 }
@@ -57,9 +58,45 @@ struct ContentView: View {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            HStack {
+                Label("Live Activity", systemImage: "wave.3.right.circle")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(captureManager.liveActivityStatus)
+                    .font(.caption)
+                    .foregroundStyle(captureManager.liveActivityStatus == "Running" ? Color.green : Color.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
         }
         .padding(20)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var recognitionCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("On-device recognition", systemImage: "text.viewfinder")
+                .font(.headline)
+
+            if let recognition = captureManager.latestRecognition {
+                Text(recognition.summary)
+                    .font(.title3.bold())
+
+                Text("Vision confidence: \(recognition.confidence, format: .percent.precision(.fractionLength(0)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(captureManager.isCapturing ? "Scanning Pokémon GO…" : "Starts with screen capture")
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("OCR runs locally on the iPhone. Frames are not saved or uploaded.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
     }
 
     private var controls: some View {
@@ -95,8 +132,8 @@ struct ContentView: View {
 
             Text("1. Start capture and approve the full display in Apple's picker.")
             Text("2. Wait until the frame counter increases.")
-            Text("3. Open Pokemon GO and watch the Dynamic Island or Live Activity.")
-            Text("4. If the counter keeps increasing, background capture works on this device.")
+            Text("3. Open Pokemon GO, then open a Pokémon detail or appraisal screen.")
+            Text("4. Watch the Dynamic Island and return here to verify the recognition result.")
         }
         .font(.subheadline)
         .frame(maxWidth: .infinity, alignment: .leading)

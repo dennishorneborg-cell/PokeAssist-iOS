@@ -1,8 +1,8 @@
 # PokeAssist iOS prototype
 
-PokeAssist is an iOS 27 technology prototype for testing full-display capture while Pokemon GO is frontmost. It uses ScreenCaptureKit to count captured frames and exposes the current count in a Live Activity / Dynamic Island.
+PokeAssist is an iOS 27 technology prototype for testing full-display capture while Pokemon GO is frontmost. It uses ScreenCaptureKit to count captured frames, exposes the current count in a Live Activity / Dynamic Island, and performs an initial on-device Vision OCR pass for Pokemon detail and appraisal screens.
 
-This first version intentionally does not include Pokemon recognition, OCR, IV calculations, account access, automation, or an Android-style floating overlay. Its purpose is to verify that capture continues on the target iPhone after switching to Pokemon GO.
+Version 0.2 recognizes appraisal/detail screen text and combat power (`CP`/`WP`) as the first step toward IV calculation. Exact IV-bar measurement is not implemented yet. The app intentionally does not use Pokemon GO account access, automation, network uploads, or an Android-style floating overlay.
 
 ## Requirements
 
@@ -19,7 +19,10 @@ An unsigned IPA cannot be installed or launched directly on a standard iPhone. T
 3. Approve the full-display capture in Apple's system picker.
 4. Confirm that the frame counter is increasing.
 5. Switch to Pokemon GO.
-6. Confirm that the PokeAssist Live Activity / Dynamic Island continues to update.
+6. Open a Pokemon detail or appraisal screen.
+7. Confirm that the PokeAssist Live Activity / Dynamic Island continues to update and shows the local OCR result.
+
+If Live Activities are disabled, PokeAssist now shows that state inside the app instead of silently hiding the failure. Enable them in the iPhone settings for PokeAssist and retry.
 
 ## GitHub build
 
@@ -27,4 +30,4 @@ The workflow in `.github/workflows/build-unsigned-ipa.yml` runs automatically fo
 
 ## Privacy
 
-Screen capture starts only after explicit selection in Apple's system UI. The prototype processes frames in memory only, does not save screenshots or video, and does not upload captured content.
+Screen capture starts only after explicit selection in Apple's system UI. Vision OCR runs on-device at a throttled interval. The prototype processes frames in memory only, does not save screenshots or video, and does not upload captured content.

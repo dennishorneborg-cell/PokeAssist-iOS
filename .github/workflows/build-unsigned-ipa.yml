@@ -54,6 +54,9 @@ jobs:
           set -euo pipefail
           app_path='build/Build/Products/Release-iphoneos/PokeAssist.app'
           test -d "$app_path"
+          test -d "$app_path/PlugIns/PokeAssistWidget.appex"
+          test "$(plutil -extract NSSupportsLiveActivities raw -o - "$app_path/Info.plist")" = "true"
+          plutil -lint "$app_path/Info.plist" "$app_path/PlugIns/PokeAssistWidget.appex/Info.plist"
           mkdir Payload
           cp -R "$app_path" Payload/
           ditto -c -k --sequesterRsrc --keepParent Payload PokeAssist-unsigned.ipa
