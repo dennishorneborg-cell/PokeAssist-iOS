@@ -85,6 +85,13 @@ struct ContentView: View {
                 Text("Vision confidence: \(recognition.confidence, format: .percent.precision(.fractionLength(0)))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if let observedText = recognition.observedText, !recognition.isPokemonResult {
+                    Text("Read: \(observedText)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                }
             } else {
                 Text(captureManager.isCapturing ? "Scanning Pokémon GO…" : "Starts with screen capture")
                     .foregroundStyle(.secondary)

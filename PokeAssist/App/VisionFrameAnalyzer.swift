@@ -8,6 +8,7 @@ struct PokemonRecognition: Equatable, Sendable {
         case appraisal
         case pokemonDetails
         case map
+        case pokeAssist
         case unknown
     }
 
@@ -15,6 +16,11 @@ struct PokemonRecognition: Equatable, Sendable {
     let pokemonName: String?
     let combatPower: Int?
     let confidence: Double
+    let observedText: String?
+
+    var isPokemonResult: Bool {
+        screen == .appraisal || screen == .pokemonDetails
+    }
 
     var summary: String {
         switch screen {
@@ -24,6 +30,8 @@ struct PokemonRecognition: Equatable, Sendable {
             return joinedSummary(prefix: "Pokémon detected")
         case .map:
             return "Map detected"
+        case .pokeAssist:
+            return "PokeAssist active"
         case .unknown:
             return "Scanning Pokémon GO"
         }
@@ -118,7 +126,8 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 screen: .unknown,
                 pokemonName: nil,
                 combatPower: nil,
-                confidence: 0
+                confidence: 0,
+                observedText: nil
             )
         }
     }
@@ -132,14 +141,19 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
 
         let appraisalKeywords = [
             "ANGRIFF", "VERTEIDIGUNG", "KRAFTPUNKTE", "BEWERTUNG",
-            "ATTACK", "DEFENSE", "STAMINA", "APPRAISAL"
+            "ATTACK", "DEFENSE", "STAMINA", "APPRAISAL", "KP"
         ]
         let appraisalMatches = appraisalKeywords.filter { normalizedText.contains($0) }.count
         let combatPower = parseCombatPower(from: normalizedText)
         let pokemonName = findPokemonName(in: lines)
+        let observedText = makeObservedText(from: lines)
 
         let screen: PokemonRecognition.Screen
-        if appraisalMatches >= 2 {
+        if normalizedText.contains("POKEASSIST")
+            || normalizedText.contains("ON-DEVICE RECOGNITION")
+            || normalizedText.contains("SCREEN CAPTURE") {
+            screen = .pokeAssist
+        } else if appraisalMatches >= 2 {
             screen = .appraisal
         } else if combatPower != nil {
             screen = .pokemonDetails
@@ -161,12 +175,13 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             screen: screen,
             pokemonName: pokemonName,
             combatPower: combatPower,
-            confidence: confidence
+            confidence: confidence,
+            observedText: observedText
         )
     }
 
     private static func parseCombatPower(from text: String) -> Int? {
-        let pattern = #"\b(?:CP|WP)\s*[:.]?\s*([0-9]{1,5})\b"#
+        let pattern = #"\b(?:C\s*P|W\s*P)\s*[:.]?\s*([0-9]{1,2}(?:[.\s][0-9]{3})|[0-9]{1,5})\b"#
         guard let expression = try? NSRegularExpression(pattern: pattern) else { return nil }
 
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
@@ -177,7 +192,8 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             return nil
         }
 
-        return Int(text[valueRange])
+        let digits = text[valueRange].filter { $0.isNumber }
+        return Int(digits)
     }
 
     private static func findPokemonName(in lines: [RecognizedLine]) -> String? {
@@ -195,12 +211,14 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                     locale: .current
                 ).uppercased()
                 let letters = candidate.unicodeScalars.filter(CharacterSet.letters.contains).count
+                let compact = normalized.replacingOccurrences(of: " ", with: "")
 
                 return line.boundingBox.midY > 0.52
                     && line.confidence >= 0.45
                     && letters >= 3
                     && candidate.count <= 24
-                    && candidate.rangeOfCharacter(from: .decimalDigits) == nil
+                    && !compact.hasPrefix("WP")
+                    && !compact.hasPrefix("CP")
                     && !excludedTerms.contains(where: { normalized.contains($0) })
             }
             .sorted { lhs, rhs in
@@ -211,5 +229,17 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             }
             .first?
             .text
+    }
+
+    private static func makeObservedText(from lines: [RecognizedLine]) -> String? {
+        let text = lines
+            .filter { !$0.text.isEmpty && $0.confidence >= 0.35 }
+            .sorted { $0.boundingBox.midY > $1.boundingBox.midY }
+            .prefix(6)
+            .map(\.text)
+            .joined(separator: " · ")
+
+        guard !text.isEmpty else { return nil }
+        return String(text.prefix(120))
     }
 }

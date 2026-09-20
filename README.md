@@ -2,7 +2,7 @@
 
 PokeAssist is an iOS 27 technology prototype for testing full-display capture while Pokemon GO is frontmost. It uses ScreenCaptureKit to count captured frames, exposes the current count in a Live Activity / Dynamic Island, and performs an initial on-device Vision OCR pass for Pokemon detail and appraisal screens.
 
-Version 0.2 recognizes appraisal/detail screen text and combat power (`CP`/`WP`) as the first step toward IV calculation. Exact IV-bar measurement is not implemented yet. The app intentionally does not use Pokemon GO account access, automation, network uploads, or an Android-style floating overlay.
+Version 0.2.1 recognizes appraisal/detail screen text and combat power (`CP`/`WP`) as the first step toward IV calculation. It keeps the last meaningful Pokemon result visible after returning to PokeAssist and shows a short OCR diagnostic when no match is found. Exact IV-bar measurement is not implemented yet. The app intentionally does not use Pokemon GO account access, automation, network uploads, or an Android-style floating overlay.
 
 ## Requirements
 

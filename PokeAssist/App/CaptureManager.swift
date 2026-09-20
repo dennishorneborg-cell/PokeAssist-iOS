@@ -129,6 +129,12 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     private func applyRecognition(_ recognition: PokemonRecognition) {
+        guard recognition.screen != .pokeAssist else { return }
+
+        if !recognition.isPokemonResult, latestRecognition?.isPokemonResult == true {
+            return
+        }
+
         guard recognition != latestRecognition else { return }
 
         latestRecognition = recognition

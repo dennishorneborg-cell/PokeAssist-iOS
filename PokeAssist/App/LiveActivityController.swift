@@ -29,7 +29,7 @@ final class LiveActivityController {
             status: status,
             recognitionSummary: recognitionSummary
         )
-        let content = ActivityContent(state: state, staleDate: nil)
+        let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)
 
         do {
             activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
@@ -47,7 +47,11 @@ final class LiveActivityController {
             status: status,
             recognitionSummary: recognitionSummary
         )
-        let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(10))
+        let content = ActivityContent(
+            state: state,
+            staleDate: Date().addingTimeInterval(10),
+            relevanceScore: 100
+        )
 
         Task {
             await activity.update(content)
@@ -63,7 +67,7 @@ final class LiveActivityController {
             status: "Stopped",
             recognitionSummary: recognitionSummary
         )
-        let content = ActivityContent(state: state, staleDate: nil)
+        let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)
 
         Task {
             await activity.end(content, dismissalPolicy: .immediate)
