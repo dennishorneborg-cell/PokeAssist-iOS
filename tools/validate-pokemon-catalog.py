@@ -35,6 +35,8 @@ assert by_id[151]["rarity"] == "mythical"
 assert by_id[793]["rarity"] == "ultraBeast"
 assert by_id[25]["shinyReleased"] is True
 assert by_id[25]["hasEventCostumeVariant"] is True
+assert by_id[163]["hasEventCostumeVariant"] is True
+assert by_id[164]["hasEventCostumeVariant"] is True
 
 aliases: dict[str, int] = {}
 for entry in species:
@@ -46,5 +48,23 @@ for entry in species:
             entry["id"],
         )
         aliases[key] = entry["id"]
+
+
+def match_species(value: str) -> int | None:
+    normalized = normalize(value)
+    if normalized in aliases:
+        return aliases[normalized]
+
+    for alias in sorted(aliases, key=lambda item: (-len(item), item)):
+        suffix = normalized.removeprefix(alias) if normalized.startswith(alias) else ""
+        if suffix and suffix.isnumeric():
+            return aliases[alias]
+    return None
+
+
+# Regression coverage for numeric IV annotations and longest-prefix matching.
+assert match_species("Hoothoot⁵⁶㉘") == 163
+assert match_species("Mewtwo 42") == 150
+assert match_species("Mewtwo buddy") is None
 
 print(f"Validated {len(species)} species and {len(aliases)} localized aliases")

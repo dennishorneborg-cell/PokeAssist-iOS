@@ -236,7 +236,12 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 let letters = candidate.unicodeScalars.filter(CharacterSet.letters.contains).count
                 let compact = normalized.replacingOccurrences(of: " ", with: "")
 
-                return line.boundingBox.midY > 0.52
+                // The Dynamic Island is captured with the display and may
+                // contain PokeAssist's previous species name. Restrict name
+                // matching to Pokémon GO's name-card band to avoid that
+                // feedback loop while retaining normal and appraisal views.
+                return line.boundingBox.midY > 0.50
+                    && line.boundingBox.midY < 0.78
                     && line.confidence >= 0.45
                     && letters >= 3
                     && candidate.count <= 24
@@ -251,8 +256,13 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 return lhs.boundingBox.midY > rhs.boundingBox.midY
             }
 
-        return candidates.first(where: { PokemonProtection.isKnownSpeciesName($0.text) })?.text
-            ?? candidates.first?.text
+        for candidate in candidates {
+            if let canonicalName = PokemonProtection.canonicalSpeciesName(from: candidate.text) {
+                return canonicalName
+            }
+        }
+
+        return candidates.first?.text
     }
 
     private static func makeObservedText(from lines: [RecognizedLine]) -> String? {

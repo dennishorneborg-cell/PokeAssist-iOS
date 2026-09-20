@@ -166,6 +166,14 @@ final class CaptureManager: NSObject, ObservableObject {
             } else {
                 pendingRecognitionIdentity = identity
                 consecutiveRecognitionMatches = 1
+
+                // Do not leave the previous Pokémon in the Dynamic Island
+                // while a newly observed identity is being verified.
+                liveActivityController.update(
+                    frameCount: frameCount,
+                    status: "Capturing",
+                    recognitionSummary: "Identifying current Pokémon…"
+                )
             }
 
             // Require the same species/CP evidence twice before presenting a

@@ -118,6 +118,10 @@ enum PokemonProtection {
         PokemonSpeciesCatalog.shared.profile(named: value) != nil
     }
 
+    static func canonicalSpeciesName(from observedValue: String) -> String? {
+        PokemonSpeciesCatalog.shared.profile(named: observedValue)?.germanName
+    }
+
     static func assess(pokemonName: String?) -> PokemonProtectionAssessment {
         guard let pokemonName, let profile = PokemonSpeciesCatalog.shared.profile(named: pokemonName) else {
             return PokemonProtectionAssessment(matchedSpecies: nil, transferAdvice: .manualReview)
@@ -139,6 +143,7 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
     static let shared = PokemonSpeciesCatalog()
 
     private let entriesByNormalizedName: [String: PokemonSpeciesProfile]
+    private let aliasesByDescendingLength: [String]
 
     private init(bundle: Bundle = .main) {
         guard
@@ -148,6 +153,7 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
             snapshot.schemaVersion == 1
         else {
             entriesByNormalizedName = [:]
+            aliasesByDescendingLength = []
             return
         }
 
@@ -157,10 +163,28 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
             aliases[Self.normalize(entry.germanName)] = entry
         }
         entriesByNormalizedName = aliases
+        aliasesByDescendingLength = aliases.keys.sorted {
+            if $0.count == $1.count { return $0 < $1 }
+            return $0.count > $1.count
+        }
     }
 
     func profile(named name: String) -> PokemonSpeciesProfile? {
-        entriesByNormalizedName[Self.normalize(name)]
+        let normalizedName = Self.normalize(name)
+        if let exactMatch = entriesByNormalizedName[normalizedName] {
+            return exactMatch
+        }
+
+        // Pokémon GO names can contain numeric IV annotations appended by the
+        // player (including superscript/circled digits). Accept only a numeric
+        // suffix and prefer the longest alias so e.g. Mewtwo never becomes Mew.
+        for alias in aliasesByDescendingLength where normalizedName.hasPrefix(alias) {
+            let suffix = normalizedName.dropFirst(alias.count)
+            guard !suffix.isEmpty, suffix.allSatisfy({ $0.isNumber }) else { continue }
+            return entriesByNormalizedName[alias]
+        }
+
+        return nil
     }
 
     private static func normalize(_ value: String) -> String {

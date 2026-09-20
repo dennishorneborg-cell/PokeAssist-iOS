@@ -36,6 +36,14 @@ foreach ($pokemon in $goPokemon) {
     }
 }
 
+# The upstream form feed does not currently map every historical costume back
+# to its species. Keep small, source-backed overrides explicit and reviewable.
+# Hoothoot's New Year's outfit can also evolve into an outfitted Noctowl:
+# https://pokemongo.com/news/new-years-2023
+foreach ($id in @(163, 164)) {
+    [void]$costumeSpeciesIds.Add($id)
+}
+
 # PokéAPI exposes legendary and mythical flags, but not Ultra Beasts separately.
 # These National Pokédex IDs are therefore intentionally explicit and reviewable.
 $ultraBeastIds = [System.Collections.Generic.HashSet[int]]::new()
@@ -78,7 +86,8 @@ $snapshot = [ordered]@{
     sources = @(
         'https://github.com/PokeAPI/pokeapi/tree/master/data/v2/csv',
         'https://pogoapi.net/api/v1/shiny_pokemon.json',
-        'https://github.com/WatWowMap/pogo-data-api/tree/main/data/v1'
+        'https://github.com/WatWowMap/pogo-data-api/tree/main/data/v1',
+        'https://pokemongo.com/news/new-years-2023'
     )
     species = @($entries)
 }
@@ -89,4 +98,3 @@ if ($parent) {
 }
 
 $snapshot | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 $OutputPath
-

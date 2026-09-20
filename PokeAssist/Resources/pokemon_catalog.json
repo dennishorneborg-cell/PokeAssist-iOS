@@ -4,7 +4,8 @@
   "sources": [
     "https://github.com/PokeAPI/pokeapi/tree/master/data/v2/csv",
     "https://pogoapi.net/api/v1/shiny_pokemon.json",
-    "https://github.com/WatWowMap/pogo-data-api/tree/main/data/v1"
+    "https://github.com/WatWowMap/pogo-data-api/tree/main/data/v1",
+    "https://pokemongo.com/news/new-years-2023"
   ],
   "species": [
     {
@@ -1309,7 +1310,7 @@
       "germanName": "Hoothoot",
       "rarity": "standard",
       "shinyReleased": true,
-      "hasEventCostumeVariant": false
+      "hasEventCostumeVariant": true
     },
     {
       "id": 164,
@@ -1317,7 +1318,7 @@
       "germanName": "Noctuh",
       "rarity": "standard",
       "shinyReleased": true,
-      "hasEventCostumeVariant": false
+      "hasEventCostumeVariant": true
     },
     {
       "id": 165,
