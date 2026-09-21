@@ -81,6 +81,24 @@ def match_species(value: str) -> int | None:
         suffix = normalized.removeprefix(alias) if normalized.startswith(alias) else ""
         if suffix and len(suffix) <= 8 and all(character.isnumeric() or character in "oil" for character in suffix):
             return aliases[alias]
+
+    annotated_matches: set[int] = set()
+    for alias in aliases:
+        common_prefix_length = 0
+        for observed_character, alias_character in zip(normalized, alias):
+            if observed_character != alias_character:
+                break
+            common_prefix_length += 1
+        annotation_artifact = normalized[common_prefix_length:]
+        if (
+            common_prefix_length >= 6
+            and len(alias) - common_prefix_length <= 2
+            and len(annotation_artifact) <= 8
+            and all(character.isnumeric() or character in "oilqd" for character in annotation_artifact)
+        ):
+            annotated_matches.add(aliases[alias])
+    if len(annotated_matches) == 1:
+        return annotated_matches.pop()
     return None
 
 
@@ -92,6 +110,9 @@ assert match_species("Hoothoot ❷❺") == 163
 assert match_species("Hoothoot ➋➎") == 163
 assert match_species("Hoothoot (25)") == 163
 assert match_species("Ho-Oh³⁹㉕") == 250
+assert match_species('ReißlaQQQ"O') == 767
+assert match_species("Schwalbin'o") == 276
+assert match_species("Schwalbin⁵⁴⑧") == 276
 assert match_species("Hoothoot O") == 163
 assert match_species("Mewtwo 42") == 150
 assert match_species("Mewtwo buddy") is None

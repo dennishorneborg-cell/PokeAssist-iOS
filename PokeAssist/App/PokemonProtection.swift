@@ -187,6 +187,10 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
                       suffix.allSatisfy({ $0.isNumber || $0 == "o" || $0 == "i" || $0 == "l" }) else { continue }
                 return entriesByNormalizedName[alias]
             }
+
+            if let annotatedMatch = uniquelyMatchedAnnotatedPrefix(normalizedName) {
+                return annotatedMatch
+            }
         }
 
         return nil
@@ -198,14 +202,43 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
         // Match only explicit resource labels so arbitrary text cannot become
         // a species result.
         for normalizedLabel in Self.ocrNormalizedCandidates(label) {
-            for alias in aliasesByDescendingLength where normalizedLabel.hasPrefix(alias) {
-                let suffix = normalizedLabel.dropFirst(alias.count)
+            for alias in aliasesByDescendingLength {
+                guard let aliasRange = normalizedLabel.range(of: alias) else { continue }
+                let prefix = normalizedLabel[..<aliasRange.lowerBound]
+                let suffix = normalizedLabel[aliasRange.upperBound...]
+                guard prefix.count <= 5, prefix.allSatisfy(\.isNumber) else { continue }
                 guard suffix.hasPrefix("bonbon") || suffix.hasPrefix("candy") else { continue }
                 return entriesByNormalizedName[alias]
             }
         }
 
         return nil
+    }
+
+    private func uniquelyMatchedAnnotatedPrefix(_ observedName: String) -> PokemonSpeciesProfile? {
+        var matchesByID: [Int: PokemonSpeciesProfile] = [:]
+
+        for alias in aliasesByDescendingLength {
+            var commonPrefixLength = 0
+            for (observedCharacter, aliasCharacter) in zip(observedName, alias) {
+                guard observedCharacter == aliasCharacter else { break }
+                commonPrefixLength += 1
+            }
+
+            guard commonPrefixLength >= 6,
+                  alias.count - commonPrefixLength <= 2 else { continue }
+
+            let annotationArtifact = observedName.dropFirst(commonPrefixLength)
+            guard annotationArtifact.count <= 8,
+                  annotationArtifact.allSatisfy({
+                      $0.isNumber || $0 == "o" || $0 == "i" || $0 == "l" || $0 == "q" || $0 == "d"
+                  }),
+                  let profile = entriesByNormalizedName[alias] else { continue }
+            matchesByID[profile.id] = profile
+        }
+
+        guard matchesByID.count == 1 else { return nil }
+        return matchesByID.values.first
     }
 
     private static func ocrNormalizedCandidates(_ value: String) -> [String] {
