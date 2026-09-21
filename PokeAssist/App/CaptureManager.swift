@@ -30,6 +30,7 @@ final class CaptureManager: NSObject, ObservableObject {
     private var totalFrameCount = 0
     private var pendingRecognitionIdentity: RecognitionIdentity?
     private var consecutiveRecognitionMatches = 0
+    private var consecutiveNonPokemonResults = 0
     private var currentObservedScreen: PokemonRecognition.Screen = .unknown
     private var appearanceSamples: [PokemonAppearanceObservation] = []
 
@@ -107,6 +108,7 @@ final class CaptureManager: NSObject, ObservableObject {
             isEventDetected = false
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
+            consecutiveNonPokemonResults = 0
             currentObservedScreen = .unknown
             appearanceSamples.removeAll(keepingCapacity: true)
             liveActivityStatus = await liveActivityController.start(
@@ -166,24 +168,41 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     private func applyRecognition(_ recognition: PokemonRecognition) {
-        if recognition.screen != .pokeAssist {
+        if recognition.screen != .pokeAssist, recognition.screen != .unknown {
             currentObservedScreen = recognition.screen
         }
 
         guard recognition.screen != .pokeAssist else {
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
+            consecutiveNonPokemonResults = 0
             return
         }
 
         if !recognition.isPokemonResult, latestRecognition?.isPokemonResult == true {
+            consecutiveNonPokemonResults += 1
+
+            // Vision can miss one or two frames during Pokémon animations.
+            // Preserve confirmed traits through those brief gaps so the
+            // Dynamic Island does not alternate between green and its badges.
+            guard consecutiveNonPokemonResults >= 4 else { return }
+
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
+            consecutiveNonPokemonResults = 0
             resetAppearanceEvidence()
+            latestRecognition = recognition
+            liveActivityController.update(
+                frameCount: frameCount,
+                status: "Capturing",
+                recognitionSummary: "Scanning Pokémon GO",
+                presentation: .scanning
+            )
             return
         }
 
         if recognition.isPokemonResult {
+            consecutiveNonPokemonResults = 0
             let identity = RecognitionIdentity(
                 pokemonName: recognition.pokemonName,
                 combatPower: recognition.combatPower
@@ -194,22 +213,19 @@ final class CaptureManager: NSObject, ObservableObject {
             } else {
                 pendingRecognitionIdentity = identity
                 consecutiveRecognitionMatches = 1
-                resetAppearanceEvidence()
-
-                // Do not leave the previous Pokémon in the Dynamic Island
-                // while a newly observed identity is being verified.
-                liveActivityController.update(
-                    frameCount: frameCount,
-                    status: "Capturing",
-                    recognitionSummary: "Identifying current Pokémon…",
-                    presentation: .scanning
-                )
             }
 
             // Require the same species/CP evidence twice before presenting a
-            // protection decision. This trades a short delay for fewer OCR
-            // misclassifications while keeping unknown results fail-safe.
+            // protection decision. Keep the last confirmed state during the
+            // first sample so one OCR typo cannot flash a green-only badge.
             guard consecutiveRecognitionMatches >= 2 else { return }
+
+            let previousIdentity = latestRecognition.map {
+                RecognitionIdentity(pokemonName: $0.pokemonName, combatPower: $0.combatPower)
+            }
+            if identity != previousIdentity {
+                resetAppearanceEvidence()
+            }
         }
 
         guard recognition != latestRecognition else { return }

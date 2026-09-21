@@ -64,7 +64,7 @@ struct PokeAssistLiveActivity: Widget {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             } minimal: {
-                minimalBadge(context.state.presentation)
+                minimalBadges(context.state.presentation)
             }
             .keylineTint(.green)
         }
@@ -73,6 +73,9 @@ struct PokeAssistLiveActivity: Widget {
     @ViewBuilder
     private func activityBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
         HStack(spacing: 3) {
+            Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
+                .foregroundStyle(.green)
+
             if presentation.shinyDetected {
                 Image(systemName: "sparkles")
                     .foregroundStyle(.yellow)
@@ -103,11 +106,6 @@ struct PokeAssistLiveActivity: Widget {
                 Image(systemName: "shield.fill")
                     .foregroundStyle(.blue)
             }
-
-            if !hasSpecialBadge(presentation) {
-                Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
-                    .foregroundStyle(.green)
-            }
         }
         .font(.caption.bold())
     }
@@ -115,17 +113,14 @@ struct PokeAssistLiveActivity: Widget {
     @ViewBuilder
     private func compactBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
         HStack(spacing: 1) {
-            if presentation.shinyDetected && presentation.eventDetected {
-                // Keep the two most important collector traits in one compact
-                // text run. The system otherwise squeezes the leading region
-                // and can display the two SF Symbols one after another.
-                Text("✨🎉")
-                    .font(.system(size: 8.5))
-                    .fixedSize(horizontal: true, vertical: true)
-            } else if presentation.shinyDetected {
+            Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
+                .foregroundStyle(.green)
+
+            if presentation.shinyDetected {
                 Image(systemName: "sparkles")
                     .foregroundStyle(.yellow)
-            } else if presentation.eventDetected {
+            }
+            if presentation.eventDetected {
                 Image(systemName: "party.popper.fill")
                     .foregroundStyle(.purple)
             }
@@ -146,39 +141,48 @@ struct PokeAssistLiveActivity: Widget {
                 Image(systemName: "shield.fill")
                     .foregroundStyle(.blue)
             }
-            if !hasSpecialBadge(presentation) {
-                Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
-                    .foregroundStyle(.green)
-            }
         }
-        .font(.system(size: 9, weight: .bold))
+        .font(.system(size: 8, weight: .bold))
     }
 
     @ViewBuilder
-    private func minimalBadge(_ presentation: PokeAssistActivityPresentation) -> some View {
-        if presentation.shinyDetected {
-            Image(systemName: "sparkles")
-                .foregroundStyle(.yellow)
-        } else if presentation.eventDetected {
-            Image(systemName: "party.popper.fill")
-                .foregroundStyle(.purple)
-        } else if presentation.rarity.isProtected {
-            Image(systemName: raritySymbol(presentation.rarity))
-                .foregroundStyle(.orange)
-        } else if presentation.dynamaxDetected {
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                .foregroundStyle(.pink)
-        } else if presentation.size != .none {
-            Text(presentation.size == .xxl ? "XL" : "XS")
-                .font(.system(size: 7, weight: .black, design: .rounded))
-                .foregroundStyle(.cyan)
-        } else if presentation.pvpCandidate {
-            Image(systemName: "shield.fill")
-                .foregroundStyle(.blue)
-        } else {
+    private func minimalBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
+        // ScreenCaptureKit's recording indicator makes iOS choose the minimal
+        // Live Activity presentation. It offers one tiny content slot, so all
+        // current traits must be encoded in one deliberately dense view.
+        HStack(spacing: -1) {
             Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
                 .foregroundStyle(.green)
+
+            if presentation.shinyDetected {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.yellow)
+            }
+            if presentation.eventDetected {
+                Image(systemName: "party.popper.fill")
+                    .foregroundStyle(.purple)
+            }
+            if presentation.rarity.isProtected {
+                Image(systemName: raritySymbol(presentation.rarity))
+                    .foregroundStyle(.orange)
+            }
+            if presentation.dynamaxDetected {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .foregroundStyle(.pink)
+            }
+            if presentation.size != .none {
+                Text(presentation.size == .xxl ? "L" : "S")
+                    .font(.system(size: 5.5, weight: .black, design: .rounded))
+                    .foregroundStyle(.cyan)
+            }
+            if presentation.pvpCandidate {
+                Image(systemName: "shield.fill")
+                    .foregroundStyle(.blue)
+            }
         }
+        .font(.system(size: 6.5, weight: .bold))
+        .lineLimit(1)
+        .accessibilityLabel("PokeAssist status and detected traits")
     }
 
     private func compactMetric(_ state: PokeAssistAttributes.ContentState) -> String {
@@ -210,12 +214,4 @@ struct PokeAssistLiveActivity: Widget {
         }
     }
 
-    private func hasSpecialBadge(_ presentation: PokeAssistActivityPresentation) -> Bool {
-        presentation.shinyDetected
-            || presentation.eventDetected
-            || presentation.rarity.isProtected
-            || presentation.dynamaxDetected
-            || presentation.size != .none
-            || presentation.pvpCandidate
-    }
 }
