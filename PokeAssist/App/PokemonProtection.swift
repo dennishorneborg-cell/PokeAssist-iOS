@@ -209,9 +209,56 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
     }
 
     private static func ocrNormalizedCandidates(_ value: String) -> [String] {
-        let normalized = normalize(value)
+        let normalized = normalize(removingTrailingNumericAnnotations(from: value))
         let zeroAsLetterO = normalized.replacingOccurrences(of: "0", with: "o")
         return zeroAsLetterO == normalized ? [normalized] : [normalized, zeroAsLetterO]
+    }
+
+    private static func removingTrailingNumericAnnotations(from value: String) -> String {
+        let scalars = Array(value.unicodeScalars)
+        var endIndex = scalars.count
+        var foundNumber = false
+        let wrappers = CharacterSet.whitespacesAndNewlines
+            .union(.punctuationCharacters)
+            .union(CharacterSet(charactersIn: "·•◦"))
+
+        while endIndex > 0 {
+            let scalar = scalars[endIndex - 1]
+            if isNumericAnnotation(scalar) {
+                foundNumber = true
+                endIndex -= 1
+            } else if wrappers.contains(scalar) {
+                endIndex -= 1
+            } else {
+                break
+            }
+        }
+
+        guard foundNumber else { return value }
+        return String(String.UnicodeScalarView(scalars[..<endIndex]))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func isNumericAnnotation(_ scalar: Unicode.Scalar) -> Bool {
+        if Character(String(scalar)).isNumber {
+            return true
+        }
+
+        // Explicitly cover superscript/subscript and all common enclosed,
+        // parenthesized, double-circled and filled-circled digit blocks. Some
+        // of these are classified as symbols rather than decimal digits.
+        switch scalar.value {
+        case 0x00B2, 0x00B3, 0x00B9,
+             0x2070, 0x2074...0x2079,
+             0x2080...0x2089,
+             0x2460...0x24FF,
+             0x2776...0x2793,
+             0x3251...0x325F,
+             0x32B1...0x32BF:
+            return true
+        default:
+            return false
+        }
     }
 
     private static func normalize(_ value: String) -> String {

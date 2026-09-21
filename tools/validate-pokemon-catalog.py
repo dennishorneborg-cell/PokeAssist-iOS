@@ -15,6 +15,22 @@ def normalize(value: str) -> str:
     )
 
 
+def remove_trailing_numeric_annotations(value: str) -> str:
+    end = len(value)
+    found_number = False
+    while end:
+        character = value[end - 1]
+        category = unicodedata.category(character)
+        if character.isnumeric() or 0x2460 <= ord(character) <= 0x24FF or 0x2776 <= ord(character) <= 0x2793:
+            found_number = True
+            end -= 1
+        elif character.isspace() or category.startswith("P") or character in "·•◦":
+            end -= 1
+        else:
+            break
+    return value[:end].rstrip() if found_number else value
+
+
 catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8-sig"))
 species = catalog["species"]
 ids = [entry["id"] for entry in species]
@@ -57,7 +73,7 @@ for entry in species:
 
 
 def match_species(value: str) -> int | None:
-    normalized = normalize(value)
+    normalized = normalize(remove_trailing_numeric_annotations(value))
     if normalized in aliases:
         return aliases[normalized]
 
@@ -70,6 +86,12 @@ def match_species(value: str) -> int | None:
 
 # Regression coverage for numeric IV annotations and longest-prefix matching.
 assert match_species("Hoothoot⁵⁶㉘") == 163
+assert match_species("Hoothoot ²⁵") == 163
+assert match_species("Hoothoot ②⑤") == 163
+assert match_species("Hoothoot ❷❺") == 163
+assert match_species("Hoothoot ➋➎") == 163
+assert match_species("Hoothoot (25)") == 163
+assert match_species("Ho-Oh³⁹㉕") == 250
 assert match_species("Hoothoot O") == 163
 assert match_species("Mewtwo 42") == 150
 assert match_species("Mewtwo buddy") is None
