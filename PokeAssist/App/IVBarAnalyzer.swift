@@ -14,6 +14,13 @@ struct PokemonIVs: Equatable, Sendable {
     var summary: String {
         "IV \(attack)/\(defense)/\(stamina) · \(percentage)% beta"
     }
+
+    var isPVPCandidate: Bool {
+        // A conservative hint only: low Attack with strong bulk is a common
+        // Great/Ultra League pattern; near-perfect IVs can matter in Master.
+        (attack <= 5 && defense >= 12 && stamina >= 12)
+            || (attack >= 14 && defense >= 14 && stamina >= 14)
+    }
 }
 
 enum IVBarAnalyzer {
@@ -36,7 +43,10 @@ enum IVBarAnalyzer {
 
     // Normalized centers measured from Pokemon GO's appraisal layout. Searching
     // around each center keeps this independent of the iPhone's pixel resolution.
-    private static let expectedBarYRatios = [0.750, 0.792, 0.835]
+    private static let expectedBarLayouts = [
+        [0.750, 0.792, 0.835],
+        [0.774, 0.817, 0.859]
+    ]
 
     static func analyze(pixelBuffer: CVPixelBuffer) -> PokemonIVs? {
         guard let bgraPixelBuffer = makeBGRAPixelBuffer(from: pixelBuffer) else { return nil }
@@ -54,18 +64,23 @@ enum IVBarAnalyzer {
         let bytes = baseAddress.assumingMemoryBound(to: UInt8.self)
         let bytesPerRow = CVPixelBufferGetBytesPerRow(bgraPixelBuffer)
 
-        let values = expectedBarYRatios.compactMap { ratio in
-            measureBar(
-                expectedYRatio: ratio,
-                width: width,
-                height: height,
-                bytesPerRow: bytesPerRow,
-                bytes: bytes
-            )
+        for layout in expectedBarLayouts {
+            let values = layout.compactMap { ratio in
+                measureBar(
+                    expectedYRatio: ratio,
+                    width: width,
+                    height: height,
+                    bytesPerRow: bytesPerRow,
+                    bytes: bytes
+                )
+            }
+
+            if values.count == 3 {
+                return PokemonIVs(attack: values[0], defense: values[1], stamina: values[2])
+            }
         }
 
-        guard values.count == 3 else { return nil }
-        return PokemonIVs(attack: values[0], defense: values[1], stamina: values[2])
+        return nil
     }
 
     private static func makeBGRAPixelBuffer(from source: CVPixelBuffer) -> CVPixelBuffer? {

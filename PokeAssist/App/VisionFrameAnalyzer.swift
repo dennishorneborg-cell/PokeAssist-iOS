@@ -3,6 +3,11 @@ import Foundation
 import ImageIO
 import Vision
 
+enum PokemonSizeClass: String, Equatable, Sendable {
+    case xxs = "XXS"
+    case xxl = "XXL"
+}
+
 struct PokemonRecognition: Equatable, Sendable {
     enum Screen: String, Sendable {
         case appraisal
@@ -19,6 +24,8 @@ struct PokemonRecognition: Equatable, Sendable {
     let observedText: String?
     let individualValues: PokemonIVs?
     let protection: PokemonProtectionAssessment
+    let sizeClass: PokemonSizeClass?
+    let isDynamax: Bool
 
     var isPokemonResult: Bool {
         screen == .appraisal || screen == .pokemonDetails
@@ -66,6 +73,17 @@ struct PokemonRecognition: Equatable, Sendable {
 
         if let individualValues {
             parts.append(individualValues.summary)
+            if individualValues.isPVPCandidate {
+                parts.append("PvP IV pattern beta")
+            }
+        }
+
+        if let sizeClass {
+            parts.append(sizeClass.rawValue)
+        }
+
+        if isDynamax {
+            parts.append("Dynamax")
         }
 
         return parts.joined(separator: " · ")
@@ -81,7 +99,7 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
 
     private let analysisQueue = DispatchQueue(label: "de.schroeder.PokeAssist.vision", qos: .utility)
     private let stateLock = NSLock()
-    private let minimumAnalysisInterval: TimeInterval = 1.5
+    private let minimumAnalysisInterval: TimeInterval = 0.45
 
     private var isAnalyzing = false
     private var lastAnalysisDate = Date.distantPast
@@ -150,7 +168,9 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 confidence: recognition.confidence,
                 observedText: recognition.observedText,
                 individualValues: IVBarAnalyzer.analyze(pixelBuffer: pixelBuffer),
-                protection: recognition.protection
+                protection: recognition.protection,
+                sizeClass: recognition.sizeClass,
+                isDynamax: recognition.isDynamax
             )
         } catch {
             return PokemonRecognition(
@@ -160,13 +180,19 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 confidence: 0,
                 observedText: nil,
                 individualValues: nil,
-                protection: PokemonProtection.assess(pokemonName: nil)
+                protection: PokemonProtection.assess(pokemonName: nil),
+                sizeClass: nil,
+                isDynamax: false
             )
         }
     }
 
     private static func classify(lines: [RecognizedLine]) -> PokemonRecognition {
-        let normalizedText = lines
+        // System overlays such as the expanded Dynamic Island are part of the
+        // captured display. Classification uses only app content below that
+        // overlay so PokeAssist cannot read its own previous "Appraisal" text.
+        let contentLines = lines.filter { $0.boundingBox.midY < 0.82 }
+        let normalizedText = contentLines
             .map(\.text)
             .joined(separator: " ")
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
@@ -176,20 +202,35 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             "ANGRIFF", "VERTEIDIGUNG", "KRAFTPUNKTE", "BEWERTUNG",
             "ATTACK", "DEFENSE", "STAMINA", "APPRAISAL", "KP"
         ]
-        let appraisalMatches = appraisalKeywords.filter { normalizedText.contains($0) }.count
-        let combatPower = parseCombatPower(from: normalizedText)
+        let appraisalText = contentLines
+            .filter { $0.boundingBox.midY < 0.50 }
+            .map(\.text)
+            .joined(separator: " ")
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .uppercased()
+        let appraisalMatches = appraisalKeywords.filter { appraisalText.contains($0) }.count
+        let combatPower = parseCombatPower(from: lines)
         let pokemonName = findPokemonName(in: lines)
-        let observedText = makeObservedText(from: lines)
+        let observedText = makeObservedText(from: contentLines)
         let protection = PokemonProtection.assess(pokemonName: pokemonName)
+        let sizeClass: PokemonSizeClass?
+        if normalizedText.contains("XXL") {
+            sizeClass = .xxl
+        } else if normalizedText.contains("XXS") {
+            sizeClass = .xxs
+        } else {
+            sizeClass = nil
+        }
+        let isDynamax = normalizedText.contains("DYNAMAX")
+            || normalizedText.contains("GIGADYNAMAX")
 
         let screen: PokemonRecognition.Screen
-        if normalizedText.contains("POKEASSIST")
-            || normalizedText.contains("ON-DEVICE RECOGNITION")
+        if normalizedText.contains("ON-DEVICE RECOGNITION")
             || normalizedText.contains("SCREEN CAPTURE") {
             screen = .pokeAssist
         } else if appraisalMatches >= 2 {
             screen = .appraisal
-        } else if combatPower != nil {
+        } else if combatPower != nil || pokemonName != nil {
             screen = .pokemonDetails
         } else if normalizedText.contains("IN DER NÄHE") || normalizedText.contains("NEARBY") {
             screen = .map
@@ -212,24 +253,41 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             confidence: confidence,
             observedText: observedText,
             individualValues: nil,
-            protection: protection
+            protection: protection,
+            sizeClass: sizeClass,
+            isDynamax: isDynamax
         )
     }
 
-    private static func parseCombatPower(from text: String) -> Int? {
+    private static func parseCombatPower(from lines: [RecognizedLine]) -> Int? {
         let pattern = #"\b(?:C\s*P|W\s*P)\s*[:.]?\s*([0-9]{1,2}(?:[.\s][0-9]{3})|[0-9]{1,5})\b"#
         guard let expression = try? NSRegularExpression(pattern: pattern) else { return nil }
 
-        let range = NSRange(text.startIndex..<text.endIndex, in: text)
-        guard
-            let match = expression.firstMatch(in: text, range: range),
-            let valueRange = Range(match.range(at: 1), in: text)
-        else {
-            return nil
+        let candidates = lines
+            .filter { line in
+                let compact = line.text
+                    .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+                    .uppercased()
+                    .filter { $0.isLetter || $0.isNumber }
+                return line.boundingBox.midY > 0.78
+                    && line.boundingBox.midY < 0.95
+                    && (compact.hasPrefix("CP") || compact.hasPrefix("WP"))
+            }
+            .sorted { $0.confidence > $1.confidence }
+
+        for candidate in candidates {
+            let text = candidate.text.uppercased()
+            let range = NSRange(text.startIndex..<text.endIndex, in: text)
+            guard let match = expression.firstMatch(in: text, range: range),
+                  let valueRange = Range(match.range(at: 1), in: text) else { continue }
+
+            let digits = text[valueRange].filter { $0.isNumber }
+            if let value = Int(digits) {
+                return value
+            }
         }
 
-        let digits = text[valueRange].filter { $0.isNumber }
-        return Int(digits)
+        return nil
     }
 
     private static func findPokemonName(in lines: [RecognizedLine]) -> String? {
@@ -255,7 +313,7 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 // feedback loop while retaining normal and appraisal views.
                 return line.boundingBox.midY > 0.50
                     && line.boundingBox.midY < 0.78
-                    && line.confidence >= 0.45
+                    && line.confidence >= 0.32
                     && letters >= 3
                     && candidate.count <= 24
                     && !compact.hasPrefix("WP")

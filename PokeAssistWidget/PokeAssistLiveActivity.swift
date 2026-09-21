@@ -56,7 +56,7 @@ struct PokeAssistLiveActivity: Widget {
                         .lineLimit(2)
                 }
             } compactLeading: {
-                activityBadges(context.state.presentation)
+                compactBadges(context.state.presentation)
             } compactTrailing: {
                 Text(compactMetric(context.state))
                     .font(.caption2.monospacedDigit().bold())
@@ -83,12 +83,60 @@ struct PokeAssistLiveActivity: Widget {
                     .foregroundStyle(.orange)
             }
 
-            if !presentation.shinyDetected && !presentation.rarity.isProtected {
+            if presentation.dynamaxDetected {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .foregroundStyle(.pink)
+            }
+
+            if presentation.size != .none {
+                Text(presentation.size == .xxl ? "XL" : "XS")
+                    .font(.system(size: 8, weight: .black, design: .rounded))
+                    .foregroundStyle(.cyan)
+            }
+
+            if presentation.pvpCandidate {
+                Image(systemName: "shield.fill")
+                    .foregroundStyle(.blue)
+            }
+
+            if !hasSpecialBadge(presentation) {
                 Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
                     .foregroundStyle(.green)
             }
         }
         .font(.caption.bold())
+    }
+
+    @ViewBuilder
+    private func compactBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
+        HStack(spacing: 1) {
+            if presentation.shinyDetected {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.yellow)
+            }
+            if presentation.rarity.isProtected {
+                Image(systemName: raritySymbol(presentation.rarity))
+                    .foregroundStyle(.orange)
+            }
+            if presentation.dynamaxDetected {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .foregroundStyle(.pink)
+            }
+            if presentation.size != .none {
+                Text(presentation.size == .xxl ? "XL" : "XS")
+                    .font(.system(size: 7, weight: .black, design: .rounded))
+                    .foregroundStyle(.cyan)
+            }
+            if presentation.pvpCandidate {
+                Image(systemName: "shield.fill")
+                    .foregroundStyle(.blue)
+            }
+            if !hasSpecialBadge(presentation) {
+                Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
+                    .foregroundStyle(.green)
+            }
+        }
+        .font(.system(size: 9, weight: .bold))
     }
 
     @ViewBuilder
@@ -99,6 +147,16 @@ struct PokeAssistLiveActivity: Widget {
         } else if presentation.rarity.isProtected {
             Image(systemName: raritySymbol(presentation.rarity))
                 .foregroundStyle(.orange)
+        } else if presentation.dynamaxDetected {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .foregroundStyle(.pink)
+        } else if presentation.size != .none {
+            Text(presentation.size == .xxl ? "XL" : "XS")
+                .font(.system(size: 7, weight: .black, design: .rounded))
+                .foregroundStyle(.cyan)
+        } else if presentation.pvpCandidate {
+            Image(systemName: "shield.fill")
+                .foregroundStyle(.blue)
         } else {
             Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
                 .foregroundStyle(.green)
@@ -110,7 +168,7 @@ struct PokeAssistLiveActivity: Widget {
             return "\(percentage)%"
         }
         if let combatPower = state.presentation.combatPower {
-            return "CP \(combatPower)"
+            return String(combatPower)
         }
         return state.frameCount.formatted()
     }
@@ -132,5 +190,13 @@ struct PokeAssistLiveActivity: Widget {
         case .ultraBeast: return "hexagon.fill"
         case .standard, .unknown: return "viewfinder.circle.fill"
         }
+    }
+
+    private func hasSpecialBadge(_ presentation: PokeAssistActivityPresentation) -> Bool {
+        presentation.shinyDetected
+            || presentation.rarity.isProtected
+            || presentation.dynamaxDetected
+            || presentation.size != .none
+            || presentation.pvpCandidate
     }
 }

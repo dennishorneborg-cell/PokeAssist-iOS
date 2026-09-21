@@ -11,7 +11,7 @@ struct ShinySparkleObservation: Equatable, Sendable {
 final class ShinySparkleAnalyzer: @unchecked Sendable {
     private let analysisQueue = DispatchQueue(label: "de.schroeder.PokeAssist.sparkles", qos: .utility)
     private let stateLock = NSLock()
-    private let minimumAnalysisInterval: TimeInterval = 0.25
+    private let minimumAnalysisInterval: TimeInterval = 0.20
 
     private var isAnalyzing = false
     private var lastAnalysisDate = Date.distantPast
@@ -82,7 +82,10 @@ final class ShinySparkleAnalyzer: @unchecked Sendable {
         for y in minimumY...maximumY {
             for x in minimumX...maximumX {
                 let normalizedX = Double(x) / Double(width)
-                guard normalizedX <= 0.31 || normalizedX >= 0.69 else { continue }
+                let normalizedY = Double(y) / Double(height)
+                guard normalizedX <= 0.31
+                    || normalizedX >= 0.69
+                    || normalizedY <= 0.23 else { continue }
 
                 let offset = y * bytesPerRow + x * 4
                 let blue = Int(bytes[offset])

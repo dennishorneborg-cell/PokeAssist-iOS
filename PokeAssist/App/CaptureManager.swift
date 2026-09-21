@@ -231,7 +231,7 @@ final class CaptureManager: NSObject, ObservableObject {
             sparkleSamples.removeFirst(sparkleSamples.count - 10)
         }
 
-        guard !isShinyDetected, sparkleSamples.count >= 6 else { return }
+        guard !isShinyDetected, sparkleSamples.count >= 5 else { return }
 
         let positiveSamples = sparkleSamples.filter { $0.candidateCount > 0 }
         var bucketCounts: [Int: Int] = [:]
@@ -247,10 +247,10 @@ final class CaptureManager: NSObject, ObservableObject {
         // A static white eye/body feature remains in one bucket. A real Shiny
         // animation produces several small highlights that appear at changing
         // positions across the short frame sequence.
-        guard positiveSamples.count >= 3,
-              bucketCounts.count >= 3,
-              transientBucketCount >= 2,
-              hasMultiSparkleFrame else { return }
+        guard positiveSamples.count >= 2,
+              bucketCounts.count >= 2,
+              transientBucketCount >= 1,
+              (hasMultiSparkleFrame || bucketCounts.count >= 3) else { return }
 
         isShinyDetected = true
         liveActivityController.update(
@@ -292,6 +292,13 @@ final class CaptureManager: NSObject, ObservableObject {
         case .unknown: rarity = .unknown
         }
 
+        let size: PokeAssistActivitySize
+        switch recognition.sizeClass {
+        case .xxs: size = .xxs
+        case .xxl: size = .xxl
+        case nil: size = .none
+        }
+
         return PokeAssistActivityPresentation(
             mode: mode,
             pokemonName: recognition.pokemonName,
@@ -301,7 +308,10 @@ final class CaptureManager: NSObject, ObservableObject {
             ivStamina: recognition.individualValues?.stamina,
             ivPercentage: recognition.individualValues?.percentage,
             shinyDetected: isShinyDetected,
-            rarity: rarity
+            rarity: rarity,
+            size: size,
+            dynamaxDetected: recognition.isDynamax,
+            pvpCandidate: recognition.individualValues?.isPVPCandidate == true
         )
     }
 

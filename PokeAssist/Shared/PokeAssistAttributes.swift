@@ -19,6 +19,12 @@ enum PokeAssistActivityRarity: String, Codable, Hashable {
     }
 }
 
+enum PokeAssistActivitySize: String, Codable, Hashable {
+    case xxs
+    case xxl
+    case none
+}
+
 struct PokeAssistActivityPresentation: Codable, Hashable {
     var mode: PokeAssistActivityMode
     var pokemonName: String?
@@ -29,6 +35,9 @@ struct PokeAssistActivityPresentation: Codable, Hashable {
     var ivPercentage: Int?
     var shinyDetected: Bool
     var rarity: PokeAssistActivityRarity
+    var size: PokeAssistActivitySize
+    var dynamaxDetected: Bool
+    var pvpCandidate: Bool
 
     static let scanning = PokeAssistActivityPresentation(
         mode: .scanning,
@@ -39,7 +48,10 @@ struct PokeAssistActivityPresentation: Codable, Hashable {
         ivStamina: nil,
         ivPercentage: nil,
         shinyDetected: false,
-        rarity: .unknown
+        rarity: .unknown,
+        size: .none,
+        dynamaxDetected: false,
+        pvpCandidate: false
     )
 }
 

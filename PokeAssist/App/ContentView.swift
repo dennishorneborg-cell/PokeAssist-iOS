@@ -92,6 +92,18 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if recognition.isDynamax {
+                    Label("Dynamax detected", systemImage: "arrow.up.left.and.arrow.down.right")
+                        .font(.headline)
+                        .foregroundStyle(.pink)
+                }
+
+                if let sizeClass = recognition.sizeClass {
+                    Label("Size marker: \(sizeClass.rawValue)", systemImage: "arrow.up.left.and.arrow.down.right")
+                        .font(.headline)
+                        .foregroundStyle(.cyan)
+                }
+
                 Text("Vision confidence: \(recognition.confidence, format: .percent.precision(.fractionLength(0)))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -122,6 +134,12 @@ struct ContentView: View {
                     Text("Experimental IV: Attack \(values.attack) · Defense \(values.defense) · HP \(values.stamina) · \(values.percentage)%")
                         .font(.subheadline.bold())
                         .foregroundStyle(.green)
+
+                    if values.isPVPCandidate {
+                        Label("PvP IV pattern (beta; not a ranking guarantee)", systemImage: "shield.fill")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.blue)
+                    }
                 }
 
                 if let observedText = recognition.observedText, !recognition.isPokemonResult {

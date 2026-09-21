@@ -169,9 +169,12 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
         // Pokémon GO names can contain numeric IV annotations appended by the
         // player (including superscript/circled digits). Accept only a numeric
         // suffix and prefer the longest alias so e.g. Mewtwo never becomes Mew.
+        // Vision occasionally reads a circled digit as O/I/l; accept only a
+        // very short suffix made exclusively from those numeric lookalikes.
         for alias in aliasesByDescendingLength where normalizedName.hasPrefix(alias) {
             let suffix = normalizedName.dropFirst(alias.count)
-            guard !suffix.isEmpty, suffix.allSatisfy({ $0.isNumber }) else { continue }
+            guard !suffix.isEmpty, suffix.count <= 8,
+                  suffix.allSatisfy({ $0.isNumber || $0 == "o" || $0 == "i" || $0 == "l" }) else { continue }
             return entriesByNormalizedName[alias]
         }
 

@@ -57,13 +57,14 @@ def match_species(value: str) -> int | None:
 
     for alias in sorted(aliases, key=lambda item: (-len(item), item)):
         suffix = normalized.removeprefix(alias) if normalized.startswith(alias) else ""
-        if suffix and suffix.isnumeric():
+        if suffix and len(suffix) <= 8 and all(character.isnumeric() or character in "oil" for character in suffix):
             return aliases[alias]
     return None
 
 
 # Regression coverage for numeric IV annotations and longest-prefix matching.
 assert match_species("Hoothoot⁵⁶㉘") == 163
+assert match_species("Hoothoot O") == 163
 assert match_species("Mewtwo 42") == 150
 assert match_species("Mewtwo buddy") is None
 
