@@ -171,40 +171,47 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
     }
 
     func profile(named name: String) -> PokemonSpeciesProfile? {
-        let normalizedName = Self.normalize(name)
-        if let exactMatch = entriesByNormalizedName[normalizedName] {
-            return exactMatch
-        }
+        for normalizedName in Self.ocrNormalizedCandidates(name) {
+            if let exactMatch = entriesByNormalizedName[normalizedName] {
+                return exactMatch
+            }
 
-        // Pokémon GO names can contain numeric IV annotations appended by the
-        // player (including superscript/circled digits). Accept only a numeric
-        // suffix and prefer the longest alias so e.g. Mewtwo never becomes Mew.
-        // Vision occasionally reads a circled digit as O/I/l; accept only a
-        // very short suffix made exclusively from those numeric lookalikes.
-        for alias in aliasesByDescendingLength where normalizedName.hasPrefix(alias) {
-            let suffix = normalizedName.dropFirst(alias.count)
-            guard !suffix.isEmpty, suffix.count <= 8,
-                  suffix.allSatisfy({ $0.isNumber || $0 == "o" || $0 == "i" || $0 == "l" }) else { continue }
-            return entriesByNormalizedName[alias]
+            // Pokémon GO names can contain numeric IV annotations appended by the
+            // player (including superscript/circled digits). Accept only a numeric
+            // suffix and prefer the longest alias so e.g. Mewtwo never becomes Mew.
+            // Vision occasionally reads a circled digit as O/I/l; accept only a
+            // very short suffix made exclusively from those numeric lookalikes.
+            for alias in aliasesByDescendingLength where normalizedName.hasPrefix(alias) {
+                let suffix = normalizedName.dropFirst(alias.count)
+                guard !suffix.isEmpty, suffix.count <= 8,
+                      suffix.allSatisfy({ $0.isNumber || $0 == "o" || $0 == "i" || $0 == "l" }) else { continue }
+                return entriesByNormalizedName[alias]
+            }
         }
 
         return nil
     }
 
     func profile(fromResourceLabel label: String) -> PokemonSpeciesProfile? {
-        let normalizedLabel = Self.normalize(label)
-
         // The candy/resource row is lower on the details card and remains
         // readable when a decorated nickname confuses OCR on the name row.
         // Match only explicit resource labels so arbitrary text cannot become
         // a species result.
-        for alias in aliasesByDescendingLength where normalizedLabel.hasPrefix(alias) {
-            let suffix = normalizedLabel.dropFirst(alias.count)
-            guard suffix.hasPrefix("bonbon") || suffix.hasPrefix("candy") else { continue }
-            return entriesByNormalizedName[alias]
+        for normalizedLabel in Self.ocrNormalizedCandidates(label) {
+            for alias in aliasesByDescendingLength where normalizedLabel.hasPrefix(alias) {
+                let suffix = normalizedLabel.dropFirst(alias.count)
+                guard suffix.hasPrefix("bonbon") || suffix.hasPrefix("candy") else { continue }
+                return entriesByNormalizedName[alias]
+            }
         }
 
         return nil
+    }
+
+    private static func ocrNormalizedCandidates(_ value: String) -> [String] {
+        let normalized = normalize(value)
+        let zeroAsLetterO = normalized.replacingOccurrences(of: "0", with: "o")
+        return zeroAsLetterO == normalized ? [normalized] : [normalized, zeroAsLetterO]
     }
 
     private static func normalize(_ value: String) -> String {

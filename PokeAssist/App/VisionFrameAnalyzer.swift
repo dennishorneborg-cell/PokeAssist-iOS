@@ -105,6 +105,7 @@ struct PokemonRecognition: Equatable, Sendable {
 final class VisionFrameAnalyzer: @unchecked Sendable {
     private struct RecognizedLine {
         let text: String
+        let alternatives: [String]
         let confidence: Float
         let boundingBox: CGRect
     }
@@ -149,7 +150,8 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
         request.recognitionLanguages = ["de-DE", "en-US"]
         request.customWords = [
             "Pokémon", "Bewertung", "Angriff", "Verteidigung", "Kraftpunkte",
-            "Appraisal", "Attack", "Defense", "Stamina"
+            "Appraisal", "Attack", "Defense", "Stamina",
+            "Ho-Oh", "Porygon-Z", "Jangmo-o", "Hakamo-o", "Kommo-o"
         ]
         request.minimumTextHeight = 0.012
 
@@ -162,9 +164,14 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             try handler.perform([request])
 
             let lines = (request.results ?? []).compactMap { observation -> RecognizedLine? in
-                guard let candidate = observation.topCandidates(1).first else { return nil }
+                let candidates = observation.topCandidates(3)
+                guard let candidate = candidates.first else { return nil }
                 return RecognizedLine(
                     text: candidate.string.trimmingCharacters(in: .whitespacesAndNewlines),
+                    alternatives: candidates
+                        .dropFirst()
+                        .map { $0.string.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty },
                     confidence: candidate.confidence,
                     boundingBox: observation.boundingBox
                 )
@@ -323,9 +330,9 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                 // contain PokeAssist's previous species name. Restrict name
                 // matching to Pokémon GO's name-card band to avoid that
                 // feedback loop while retaining normal and appraisal views.
-                return line.boundingBox.midY > 0.50
-                    && line.boundingBox.midY < 0.78
-                    && line.confidence >= 0.32
+                return line.boundingBox.midY > 0.46
+                    && line.boundingBox.midY < 0.80
+                    && line.confidence >= 0.20
                     && letters >= 3
                     && candidate.count <= 24
                     && !compact.hasPrefix("WP")
@@ -340,28 +347,32 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             }
 
         for candidate in candidates {
-            if let canonicalName = PokemonProtection.canonicalSpeciesName(from: candidate.text) {
-                return canonicalName
+            for text in [candidate.text] + candidate.alternatives {
+                if let canonicalName = PokemonProtection.canonicalSpeciesName(from: text) {
+                    return canonicalName
+                }
             }
         }
 
         let resourceCandidates = lines
             .filter { line in
-                line.boundingBox.midY > 0.20
-                    && line.boundingBox.midY < 0.55
-                    && line.confidence >= 0.28
+                line.boundingBox.midY > 0.16
+                    && line.boundingBox.midY < 0.58
+                    && line.confidence >= 0.18
             }
             .sorted { $0.confidence > $1.confidence }
 
         for candidate in resourceCandidates {
-            if let canonicalName = PokemonProtection.canonicalSpeciesName(fromResourceLabel: candidate.text) {
-                return canonicalName
-            }
-            // Vision may split the two-line "Pikachu- / Bonbon" label into
-            // separate observations. An exact species line in this resource
-            // band is a safe fallback even without the suffix.
-            if let canonicalName = PokemonProtection.canonicalSpeciesName(from: candidate.text) {
-                return canonicalName
+            for text in [candidate.text] + candidate.alternatives {
+                if let canonicalName = PokemonProtection.canonicalSpeciesName(fromResourceLabel: text) {
+                    return canonicalName
+                }
+                // Vision may split the two-line "Pikachu- / Bonbon" label into
+                // separate observations. An exact species line in this resource
+                // band is a safe fallback even without the suffix.
+                if let canonicalName = PokemonProtection.canonicalSpeciesName(from: text) {
+                    return canonicalName
+                }
             }
         }
 
