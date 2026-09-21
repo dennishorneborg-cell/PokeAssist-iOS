@@ -115,11 +115,17 @@ struct PokeAssistLiveActivity: Widget {
     @ViewBuilder
     private func compactBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
         HStack(spacing: 1) {
-            if presentation.shinyDetected {
+            if presentation.shinyDetected && presentation.eventDetected {
+                // Keep the two most important collector traits in one compact
+                // text run. The system otherwise squeezes the leading region
+                // and can display the two SF Symbols one after another.
+                Text("✨🎉")
+                    .font(.system(size: 8.5))
+                    .fixedSize(horizontal: true, vertical: true)
+            } else if presentation.shinyDetected {
                 Image(systemName: "sparkles")
                     .foregroundStyle(.yellow)
-            }
-            if presentation.eventDetected {
+            } else if presentation.eventDetected {
                 Image(systemName: "party.popper.fill")
                     .foregroundStyle(.purple)
             }

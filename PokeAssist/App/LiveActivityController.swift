@@ -4,6 +4,8 @@ import Foundation
 @MainActor
 final class LiveActivityController {
     private var activity: Activity<PokeAssistAttributes>?
+    private var pendingUpdateState: PokeAssistAttributes.ContentState?
+    private var updateTask: Task<Void, Never>?
 
     func start(
         frameCount: Int,
@@ -69,15 +71,26 @@ final class LiveActivityController {
             recognitionSummary: recognitionSummary,
             presentation: presentation
         )
-        let content = ActivityContent(
-            state: state,
-            staleDate: Date().addingTimeInterval(10),
-            relevanceScore: 100
-        )
+        pendingUpdateState = state
+        guard updateTask == nil else { return }
 
-        Task {
+        updateTask = Task { @MainActor [weak self] in
+            await self?.flushPendingUpdates(for: activity)
+        }
+    }
+
+    private func flushPendingUpdates(for activity: Activity<PokeAssistAttributes>) async {
+        while !Task.isCancelled, let state = pendingUpdateState {
+            pendingUpdateState = nil
+            let content = ActivityContent(
+                state: state,
+                staleDate: Date().addingTimeInterval(10),
+                relevanceScore: 100
+            )
             await activity.update(content)
         }
+
+        updateTask = nil
     }
 
     private func updateImmediately(
@@ -113,6 +126,9 @@ final class LiveActivityController {
     ) {
         guard let activity else { return }
         self.activity = nil
+        pendingUpdateState = nil
+        updateTask?.cancel()
+        updateTask = nil
 
         let state = PokeAssistAttributes.ContentState(
             frameCount: frameCount,
