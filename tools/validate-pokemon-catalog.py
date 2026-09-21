@@ -33,6 +33,12 @@ assert by_id[77]["germanName"] == "Ponita"
 assert by_id[150]["rarity"] == "legendary"
 assert by_id[151]["rarity"] == "mythical"
 assert by_id[793]["rarity"] == "ultraBeast"
+assert by_id[250]["germanName"] == "Ho-Oh"
+assert by_id[250]["rarity"] == "legendary"
+assert by_id[25]["hasEventCostumeVariant"] is True
+assert by_id[163]["hasEventCostumeVariant"] is True
+assert by_id[722]["germanName"] == "Bauz"
+assert by_id[926]["germanName"] == "Hefel"
 assert by_id[25]["shinyReleased"] is True
 assert by_id[25]["hasEventCostumeVariant"] is True
 assert by_id[163]["hasEventCostumeVariant"] is True

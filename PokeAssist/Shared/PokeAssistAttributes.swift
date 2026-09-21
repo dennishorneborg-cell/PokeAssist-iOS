@@ -34,6 +34,7 @@ struct PokeAssistActivityPresentation: Codable, Hashable {
     var ivStamina: Int?
     var ivPercentage: Int?
     var shinyDetected: Bool
+    var eventDetected: Bool
     var rarity: PokeAssistActivityRarity
     var size: PokeAssistActivitySize
     var dynamaxDetected: Bool
@@ -48,6 +49,7 @@ struct PokeAssistActivityPresentation: Codable, Hashable {
         ivStamina: nil,
         ivPercentage: nil,
         shinyDetected: false,
+        eventDetected: false,
         rarity: .unknown,
         size: .none,
         dynamaxDetected: false,

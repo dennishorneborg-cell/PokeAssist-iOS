@@ -82,6 +82,10 @@ struct PokemonProtectionAssessment: Equatable, Sendable {
     }
 
     var detailLines: [String] {
+        detailLines(eventDetected: false)
+    }
+
+    func detailLines(eventDetected: Bool) -> [String] {
         guard let matchedSpecies else {
             return [
                 "Species not matched in the offline catalog (possibly a nickname or OCR error).",
@@ -94,11 +98,13 @@ struct PokemonProtectionAssessment: Equatable, Sendable {
                 ? "Rarity: not classified as Legendary, Mythical, or Ultra Beast"
                 : "Protected rarity class: \(matchedSpecies.rarity.label)"
         ]
-        lines.append(
-            matchedSpecies.hasEventCostumeVariant
-                ? "Event/costume: variants exist for this species; the visible form is not confirmed yet"
-                : "Event/costume: no variant in the current snapshot; still verify manually"
-        )
+        if eventDetected {
+            lines.append("Event/costume: visible form confirmed by a calibrated rule (beta)")
+        } else if matchedSpecies.hasEventCostumeVariant {
+            lines.append("Event/costume: variants exist for this species; the visible form is not confirmed yet")
+        } else {
+            lines.append("Event/costume: no variant in the current snapshot; still verify manually")
+        }
 
         return lines
     }
@@ -111,6 +117,10 @@ enum PokemonProtection {
 
     static func canonicalSpeciesName(from observedValue: String) -> String? {
         PokemonSpeciesCatalog.shared.profile(named: observedValue)?.germanName
+    }
+
+    static func canonicalSpeciesName(fromResourceLabel observedValue: String) -> String? {
+        PokemonSpeciesCatalog.shared.profile(fromResourceLabel: observedValue)?.germanName
     }
 
     static func assess(pokemonName: String?) -> PokemonProtectionAssessment {
@@ -175,6 +185,22 @@ private final class PokemonSpeciesCatalog: @unchecked Sendable {
             let suffix = normalizedName.dropFirst(alias.count)
             guard !suffix.isEmpty, suffix.count <= 8,
                   suffix.allSatisfy({ $0.isNumber || $0 == "o" || $0 == "i" || $0 == "l" }) else { continue }
+            return entriesByNormalizedName[alias]
+        }
+
+        return nil
+    }
+
+    func profile(fromResourceLabel label: String) -> PokemonSpeciesProfile? {
+        let normalizedLabel = Self.normalize(label)
+
+        // The candy/resource row is lower on the details card and remains
+        // readable when a decorated nickname confuses OCR on the name row.
+        // Match only explicit resource labels so arbitrary text cannot become
+        // a species result.
+        for alias in aliasesByDescendingLength where normalizedLabel.hasPrefix(alias) {
+            let suffix = normalizedLabel.dropFirst(alias.count)
+            guard suffix.hasPrefix("bonbon") || suffix.hasPrefix("candy") else { continue }
             return entriesByNormalizedName[alias]
         }
 

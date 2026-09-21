@@ -32,15 +32,23 @@ struct PokemonRecognition: Equatable, Sendable {
     }
 
     var summary: String {
-        summary(shinyDetected: false)
+        summary(shinyDetected: false, eventDetected: false)
     }
 
-    func summary(shinyDetected: Bool) -> String {
+    func summary(shinyDetected: Bool, eventDetected: Bool = false) -> String {
         switch screen {
         case .appraisal:
-            return joinedSummary(prefix: "Appraisal", shinyDetected: shinyDetected)
+            return joinedSummary(
+                prefix: "Appraisal",
+                shinyDetected: shinyDetected,
+                eventDetected: eventDetected
+            )
         case .pokemonDetails:
-            return joinedSummary(prefix: "Pokémon", shinyDetected: shinyDetected)
+            return joinedSummary(
+                prefix: "Pokémon",
+                shinyDetected: shinyDetected,
+                eventDetected: eventDetected
+            )
         case .map:
             return "Map detected"
         case .pokeAssist:
@@ -50,11 +58,15 @@ struct PokemonRecognition: Equatable, Sendable {
         }
     }
 
-    private func joinedSummary(prefix: String, shinyDetected: Bool) -> String {
+    private func joinedSummary(prefix: String, shinyDetected: Bool, eventDetected: Bool) -> String {
         var parts: [String] = []
 
         if shinyDetected {
-            parts.append("✨ Shiny detected (beta)")
+            parts.append("✨ Shiny confirmed (beta)")
+        }
+
+        if eventDetected {
+            parts.append("🎉 Event costume confirmed (beta)")
         }
 
         if protection.rarity.isProtectedClass {
@@ -328,6 +340,26 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
             }
 
         for candidate in candidates {
+            if let canonicalName = PokemonProtection.canonicalSpeciesName(from: candidate.text) {
+                return canonicalName
+            }
+        }
+
+        let resourceCandidates = lines
+            .filter { line in
+                line.boundingBox.midY > 0.20
+                    && line.boundingBox.midY < 0.55
+                    && line.confidence >= 0.28
+            }
+            .sorted { $0.confidence > $1.confidence }
+
+        for candidate in resourceCandidates {
+            if let canonicalName = PokemonProtection.canonicalSpeciesName(fromResourceLabel: candidate.text) {
+                return canonicalName
+            }
+            // Vision may split the two-line "Pikachu- / Bonbon" label into
+            // separate observations. An exact species line in this resource
+            // band is a safe fallback even without the suffix.
             if let canonicalName = PokemonProtection.canonicalSpeciesName(from: candidate.text) {
                 return canonicalName
             }

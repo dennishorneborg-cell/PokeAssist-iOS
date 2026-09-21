@@ -20,7 +20,7 @@
 		B10000000000000000000011 /* IVBarAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000011 /* IVBarAnalyzer.swift */; };
 		B10000000000000000000012 /* PokemonProtection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000012 /* PokemonProtection.swift */; };
 		B10000000000000000000013 /* pokemon_catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000013 /* pokemon_catalog.json */; };
-		B10000000000000000000014 /* ShinySparkleAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000014 /* ShinySparkleAnalyzer.swift */; };
+		B10000000000000000000014 /* PokemonAppearanceAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000014 /* PokemonAppearanceAnalyzer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,7 +63,7 @@
 		C10000000000000000000011 /* IVBarAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IVBarAnalyzer.swift; sourceTree = "<group>"; };
 		C10000000000000000000012 /* PokemonProtection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokemonProtection.swift; sourceTree = "<group>"; };
 		C10000000000000000000013 /* pokemon_catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = pokemon_catalog.json; sourceTree = "<group>"; };
-		C10000000000000000000014 /* ShinySparkleAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinySparkleAnalyzer.swift; sourceTree = "<group>"; };
+		C10000000000000000000014 /* PokemonAppearanceAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokemonAppearanceAnalyzer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,7 +101,7 @@
 				C10000000000000000000010 /* VisionFrameAnalyzer.swift */,
 				C10000000000000000000011 /* IVBarAnalyzer.swift */,
 				C10000000000000000000012 /* PokemonProtection.swift */,
-				C10000000000000000000014 /* ShinySparkleAnalyzer.swift */,
+				C10000000000000000000014 /* PokemonAppearanceAnalyzer.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -222,7 +222,7 @@
 				B10000000000000000000010 /* VisionFrameAnalyzer.swift in Sources */,
 				B10000000000000000000011 /* IVBarAnalyzer.swift in Sources */,
 				B10000000000000000000012 /* PokemonProtection.swift in Sources */,
-				B10000000000000000000014 /* ShinySparkleAnalyzer.swift in Sources */,
+				B10000000000000000000014 /* PokemonAppearanceAnalyzer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,12 +276,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssist/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 0.5.1;
+				MARKETING_VERSION = 0.5.2;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -296,12 +296,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssist/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 0.5.1;
+				MARKETING_VERSION = 0.5.2;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -317,12 +317,12 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssistWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.5.1;
+				MARKETING_VERSION = 0.5.2;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -339,12 +339,12 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PokeAssistWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.5.1;
+				MARKETING_VERSION = 0.5.2;
 				PRODUCT_BUNDLE_IDENTIFIER = de.schroeder.PokeAssist.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

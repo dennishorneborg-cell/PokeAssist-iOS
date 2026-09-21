@@ -78,6 +78,11 @@ struct PokeAssistLiveActivity: Widget {
                     .foregroundStyle(.yellow)
             }
 
+            if presentation.eventDetected {
+                Image(systemName: "party.popper.fill")
+                    .foregroundStyle(.purple)
+            }
+
             if presentation.rarity.isProtected {
                 Image(systemName: raritySymbol(presentation.rarity))
                     .foregroundStyle(.orange)
@@ -114,6 +119,10 @@ struct PokeAssistLiveActivity: Widget {
                 Image(systemName: "sparkles")
                     .foregroundStyle(.yellow)
             }
+            if presentation.eventDetected {
+                Image(systemName: "party.popper.fill")
+                    .foregroundStyle(.purple)
+            }
             if presentation.rarity.isProtected {
                 Image(systemName: raritySymbol(presentation.rarity))
                     .foregroundStyle(.orange)
@@ -144,6 +153,9 @@ struct PokeAssistLiveActivity: Widget {
         if presentation.shinyDetected {
             Image(systemName: "sparkles")
                 .foregroundStyle(.yellow)
+        } else if presentation.eventDetected {
+            Image(systemName: "party.popper.fill")
+                .foregroundStyle(.purple)
         } else if presentation.rarity.isProtected {
             Image(systemName: raritySymbol(presentation.rarity))
                 .foregroundStyle(.orange)
@@ -194,6 +206,7 @@ struct PokeAssistLiveActivity: Widget {
 
     private func hasSpecialBadge(_ presentation: PokeAssistActivityPresentation) -> Bool {
         presentation.shinyDetected
+            || presentation.eventDetected
             || presentation.rarity.isProtected
             || presentation.dynamaxDetected
             || presentation.size != .none

@@ -18,19 +18,20 @@ final class CaptureManager: NSObject, ObservableObject {
     @Published private(set) var liveActivityStatus = "Not started"
     @Published private(set) var latestRecognition: PokemonRecognition?
     @Published private(set) var isShinyDetected = false
+    @Published private(set) var isEventDetected = false
 
     private let picker = SCContentSharingPicker.shared
     private let sampleQueue = DispatchQueue(label: "de.schroeder.PokeAssist.screen-samples", qos: .userInitiated)
     private let liveActivityController = LiveActivityController()
     private let frameAnalyzer = VisionFrameAnalyzer()
-    private let shinySparkleAnalyzer = ShinySparkleAnalyzer()
+    private let appearanceAnalyzer = PokemonAppearanceAnalyzer()
 
     private var stream: SCStream?
     private var totalFrameCount = 0
     private var pendingRecognitionIdentity: RecognitionIdentity?
     private var consecutiveRecognitionMatches = 0
     private var currentObservedScreen: PokemonRecognition.Screen = .unknown
-    private var sparkleSamples: [ShinySparkleObservation] = []
+    private var appearanceSamples: [PokemonAppearanceObservation] = []
 
     func presentCapturePicker() {
         guard !isCapturing, !isPreparing else { return }
@@ -103,10 +104,11 @@ final class CaptureManager: NSObject, ObservableObject {
             status = "Capturing full display"
             latestRecognition = nil
             isShinyDetected = false
+            isEventDetected = false
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
             currentObservedScreen = .unknown
-            sparkleSamples.removeAll(keepingCapacity: true)
+            appearanceSamples.removeAll(keepingCapacity: true)
             liveActivityStatus = await liveActivityController.start(
                 frameCount: 0,
                 status: "Capturing",
@@ -138,10 +140,12 @@ final class CaptureManager: NSObject, ObservableObject {
             }
         }
 
-        if currentObservedScreen == .pokemonDetails || currentObservedScreen == .appraisal {
-            shinySparkleAnalyzer.submit(pixelBuffer: pixelBuffer) { [weak self] observation in
+        if (currentObservedScreen == .pokemonDetails || currentObservedScreen == .appraisal),
+           consecutiveRecognitionMatches >= 2,
+           let pokemonName = latestRecognition?.pokemonName {
+            appearanceAnalyzer.submit(pixelBuffer: pixelBuffer, pokemonName: pokemonName) { [weak self] observation in
                 Task { @MainActor [weak self] in
-                    self?.applySparkleObservation(observation)
+                    self?.applyAppearanceObservation(observation)
                 }
             }
         }
@@ -175,7 +179,7 @@ final class CaptureManager: NSObject, ObservableObject {
         if !recognition.isPokemonResult, latestRecognition?.isPokemonResult == true {
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
-            resetShinyEvidence()
+            resetAppearanceEvidence()
             return
         }
 
@@ -190,7 +194,7 @@ final class CaptureManager: NSObject, ObservableObject {
             } else {
                 pendingRecognitionIdentity = identity
                 consecutiveRecognitionMatches = 1
-                resetShinyEvidence()
+                resetAppearanceEvidence()
 
                 // Do not leave the previous Pokémon in the Dynamic Island
                 // while a newly observed identity is being verified.
@@ -214,60 +218,57 @@ final class CaptureManager: NSObject, ObservableObject {
         liveActivityController.update(
             frameCount: frameCount,
             status: "Capturing",
-            recognitionSummary: recognition.summary(shinyDetected: isShinyDetected),
+            recognitionSummary: recognition.summary(
+                shinyDetected: isShinyDetected,
+                eventDetected: isEventDetected
+            ),
             presentation: activityPresentation(for: recognition)
         )
     }
 
-    private func applySparkleObservation(_ observation: ShinySparkleObservation) {
-        guard observation.validLayout,
-              currentObservedScreen == .pokemonDetails || currentObservedScreen == .appraisal,
+    private func applyAppearanceObservation(_ observation: PokemonAppearanceObservation) {
+        guard currentObservedScreen == .pokemonDetails || currentObservedScreen == .appraisal,
               let recognition = latestRecognition,
               recognition.isPokemonResult,
-              consecutiveRecognitionMatches >= 2 else { return }
+              consecutiveRecognitionMatches >= 2,
+              observation.pokemonName == recognition.pokemonName else { return }
 
-        sparkleSamples.append(observation)
-        if sparkleSamples.count > 10 {
-            sparkleSamples.removeFirst(sparkleSamples.count - 10)
+        appearanceSamples.append(observation)
+        if appearanceSamples.count > 5 {
+            appearanceSamples.removeFirst(appearanceSamples.count - 5)
         }
 
-        guard !isShinyDetected, sparkleSamples.count >= 5 else { return }
+        // A trait is published only after two separate frames agree. This is
+        // fast enough for a compact glance while rejecting a single animation
+        // frame or compression artefact.
+        let shinyConfirmed = isShinyDetected || appearanceSamples.filter(\.shinyDetected).count >= 2
+        let eventConfirmed = isEventDetected || appearanceSamples.filter(\.eventDetected).count >= 2
+        guard shinyConfirmed != isShinyDetected || eventConfirmed != isEventDetected else { return }
 
-        let positiveSamples = sparkleSamples.filter { $0.candidateCount > 0 }
-        var bucketCounts: [Int: Int] = [:]
-        for sample in positiveSamples {
-            for bucket in sample.candidateBuckets {
-                bucketCounts[bucket, default: 0] += 1
-            }
-        }
-
-        let transientBucketCount = bucketCounts.values.filter { $0 < sparkleSamples.count - 1 }.count
-        let hasMultiSparkleFrame = positiveSamples.contains { $0.candidateCount >= 2 }
-
-        // A static white eye/body feature remains in one bucket. A real Shiny
-        // animation produces several small highlights that appear at changing
-        // positions across the short frame sequence.
-        guard positiveSamples.count >= 2,
-              bucketCounts.count >= 2,
-              transientBucketCount >= 1,
-              (hasMultiSparkleFrame || bucketCounts.count >= 3) else { return }
-
-        isShinyDetected = true
+        isShinyDetected = shinyConfirmed
+        isEventDetected = eventConfirmed
         liveActivityController.update(
             frameCount: frameCount,
             status: "Capturing",
-            recognitionSummary: recognition.summary(shinyDetected: true),
+            recognitionSummary: recognition.summary(
+                shinyDetected: isShinyDetected,
+                eventDetected: isEventDetected
+            ),
             presentation: activityPresentation(for: recognition)
         )
     }
 
-    private func resetShinyEvidence() {
-        sparkleSamples.removeAll(keepingCapacity: true)
+    private func resetAppearanceEvidence() {
+        appearanceSamples.removeAll(keepingCapacity: true)
         isShinyDetected = false
+        isEventDetected = false
     }
 
     private func currentRecognitionSummary(fallback: String) -> String {
-        latestRecognition?.summary(shinyDetected: isShinyDetected) ?? fallback
+        latestRecognition?.summary(
+            shinyDetected: isShinyDetected,
+            eventDetected: isEventDetected
+        ) ?? fallback
     }
 
     private var currentActivityPresentation: PokeAssistActivityPresentation {
@@ -308,6 +309,7 @@ final class CaptureManager: NSObject, ObservableObject {
             ivStamina: recognition.individualValues?.stamina,
             ivPercentage: recognition.individualValues?.percentage,
             shinyDetected: isShinyDetected,
+            eventDetected: isEventDetected,
             rarity: rarity,
             size: size,
             dynamaxDetected: recognition.isDynamax,

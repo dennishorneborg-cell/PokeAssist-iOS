@@ -79,17 +79,26 @@ struct ContentView: View {
                 .font(.headline)
 
             if let recognition = captureManager.latestRecognition {
-                Text(recognition.summary(shinyDetected: captureManager.isShinyDetected))
+                Text(recognition.summary(
+                    shinyDetected: captureManager.isShinyDetected,
+                    eventDetected: captureManager.isEventDetected
+                ))
                     .font(.title3.bold())
 
                 if captureManager.isShinyDetected {
-                    Label("Animated Shiny sparkle detected (beta)", systemImage: "sparkles")
+                    Label("Species-specific Shiny appearance confirmed (beta)", systemImage: "sparkles")
                         .font(.headline)
                         .foregroundStyle(.yellow)
                 } else if recognition.isPokemonResult {
-                    Label("Shiny not visually confirmed", systemImage: "questionmark.diamond")
+                    Label("Shiny not confirmed by a calibrated visual rule", systemImage: "questionmark.diamond")
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
+                }
+
+                if captureManager.isEventDetected {
+                    Label("Visible event costume confirmed (beta)", systemImage: "party.popper.fill")
+                        .font(.headline)
+                        .foregroundStyle(.purple)
                 }
 
                 if recognition.isDynamax {
@@ -119,13 +128,16 @@ struct ContentView: View {
                                 : Color.orange
                         )
 
-                    ForEach(recognition.protection.detailLines, id: \.self) { line in
+                    ForEach(
+                        recognition.protection.detailLines(eventDetected: captureManager.isEventDetected),
+                        id: \.self
+                    ) { line in
                         Text(line)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
 
-                    Text("No sparkle match is not proof that a Pokémon is not Shiny. PokeAssist never marks a Pokémon as safe to transfer.")
+                    Text("No visual match is not proof that a Pokémon is normal. PokeAssist never marks a Pokémon as safe to transfer.")
                         .font(.caption.bold())
                         .foregroundStyle(.orange)
                 }
