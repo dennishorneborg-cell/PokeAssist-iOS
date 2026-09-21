@@ -95,19 +95,10 @@ struct PokemonProtectionAssessment: Equatable, Sendable {
                 : "Protected rarity class: \(matchedSpecies.rarity.label)"
         ]
         lines.append(
-            matchedSpecies.shinyReleased
-                ? "Shiny: released for this species; the visible Shiny symbol is not confirmed yet"
-                : "Shiny: not listed in the current snapshot; treat as unconfirmed"
-        )
-        lines.append(
             matchedSpecies.hasEventCostumeVariant
                 ? "Event/costume: variants exist for this species; the visible form is not confirmed yet"
                 : "Event/costume: no variant in the current snapshot; still verify manually"
         )
-
-        if matchedSpecies.shinyReleased && matchedSpecies.hasEventCostumeVariant {
-            lines.append("Combination warning: this species can have Shiny + event variants")
-        }
 
         return lines
     }

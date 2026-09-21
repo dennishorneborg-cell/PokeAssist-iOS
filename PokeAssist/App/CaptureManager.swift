@@ -17,16 +17,20 @@ final class CaptureManager: NSObject, ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var liveActivityStatus = "Not started"
     @Published private(set) var latestRecognition: PokemonRecognition?
+    @Published private(set) var isShinyDetected = false
 
     private let picker = SCContentSharingPicker.shared
     private let sampleQueue = DispatchQueue(label: "de.schroeder.PokeAssist.screen-samples", qos: .userInitiated)
     private let liveActivityController = LiveActivityController()
     private let frameAnalyzer = VisionFrameAnalyzer()
+    private let shinySparkleAnalyzer = ShinySparkleAnalyzer()
 
     private var stream: SCStream?
     private var totalFrameCount = 0
     private var pendingRecognitionIdentity: RecognitionIdentity?
     private var consecutiveRecognitionMatches = 0
+    private var currentObservedScreen: PokemonRecognition.Screen = .unknown
+    private var sparkleSamples: [ShinySparkleObservation] = []
 
     func presentCapturePicker() {
         guard !isCapturing, !isPreparing else { return }
@@ -41,7 +45,8 @@ final class CaptureManager: NSObject, ObservableObject {
             self.liveActivityStatus = await self.liveActivityController.start(
                 frameCount: self.frameCount,
                 status: "Select full display",
-                recognitionSummary: self.latestRecognition?.summary ?? "Waiting for Pokémon GO"
+                recognitionSummary: self.currentRecognitionSummary(fallback: "Waiting for Pokémon GO"),
+                presentation: self.currentActivityPresentation
             )
 
             var configuration = SCContentSharingPickerConfiguration()
@@ -97,12 +102,16 @@ final class CaptureManager: NSObject, ObservableObject {
             isPreparing = false
             status = "Capturing full display"
             latestRecognition = nil
+            isShinyDetected = false
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
+            currentObservedScreen = .unknown
+            sparkleSamples.removeAll(keepingCapacity: true)
             liveActivityStatus = await liveActivityController.start(
                 frameCount: 0,
                 status: "Capturing",
-                recognitionSummary: "Scanning Pokémon GO"
+                recognitionSummary: "Scanning Pokémon GO",
+                presentation: .scanning
             )
         } catch {
             stream = nil
@@ -114,7 +123,8 @@ final class CaptureManager: NSObject, ObservableObject {
             picker.isActive = false
             liveActivityController.end(
                 frameCount: frameCount,
-                recognitionSummary: latestRecognition?.summary ?? "Capture failed"
+                recognitionSummary: currentRecognitionSummary(fallback: "Capture failed"),
+                presentation: currentActivityPresentation
             )
         }
     }
@@ -128,6 +138,14 @@ final class CaptureManager: NSObject, ObservableObject {
             }
         }
 
+        if currentObservedScreen == .pokemonDetails || currentObservedScreen == .appraisal {
+            shinySparkleAnalyzer.submit(pixelBuffer: pixelBuffer) { [weak self] observation in
+                Task { @MainActor [weak self] in
+                    self?.applySparkleObservation(observation)
+                }
+            }
+        }
+
         // Updating the UI and Live Activity less often keeps the prototype lightweight.
         guard totalFrameCount == 1 || totalFrameCount.isMultiple(of: 10) else { return }
 
@@ -137,12 +155,17 @@ final class CaptureManager: NSObject, ObservableObject {
             liveActivityController.update(
                 frameCount: totalFrameCount,
                 status: "Capturing",
-                recognitionSummary: latestRecognition?.summary ?? "Scanning Pokémon GO"
+                recognitionSummary: currentRecognitionSummary(fallback: "Scanning Pokémon GO"),
+                presentation: currentActivityPresentation
             )
         }
     }
 
     private func applyRecognition(_ recognition: PokemonRecognition) {
+        if recognition.screen != .pokeAssist {
+            currentObservedScreen = recognition.screen
+        }
+
         guard recognition.screen != .pokeAssist else {
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
@@ -152,6 +175,7 @@ final class CaptureManager: NSObject, ObservableObject {
         if !recognition.isPokemonResult, latestRecognition?.isPokemonResult == true {
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
+            resetShinyEvidence()
             return
         }
 
@@ -166,13 +190,15 @@ final class CaptureManager: NSObject, ObservableObject {
             } else {
                 pendingRecognitionIdentity = identity
                 consecutiveRecognitionMatches = 1
+                resetShinyEvidence()
 
                 // Do not leave the previous Pokémon in the Dynamic Island
                 // while a newly observed identity is being verified.
                 liveActivityController.update(
                     frameCount: frameCount,
                     status: "Capturing",
-                    recognitionSummary: "Identifying current Pokémon…"
+                    recognitionSummary: "Identifying current Pokémon…",
+                    presentation: .scanning
                 )
             }
 
@@ -188,7 +214,94 @@ final class CaptureManager: NSObject, ObservableObject {
         liveActivityController.update(
             frameCount: frameCount,
             status: "Capturing",
-            recognitionSummary: recognition.summary
+            recognitionSummary: recognition.summary(shinyDetected: isShinyDetected),
+            presentation: activityPresentation(for: recognition)
+        )
+    }
+
+    private func applySparkleObservation(_ observation: ShinySparkleObservation) {
+        guard observation.validLayout,
+              currentObservedScreen == .pokemonDetails || currentObservedScreen == .appraisal,
+              let recognition = latestRecognition,
+              recognition.isPokemonResult,
+              consecutiveRecognitionMatches >= 2 else { return }
+
+        sparkleSamples.append(observation)
+        if sparkleSamples.count > 10 {
+            sparkleSamples.removeFirst(sparkleSamples.count - 10)
+        }
+
+        guard !isShinyDetected, sparkleSamples.count >= 6 else { return }
+
+        let positiveSamples = sparkleSamples.filter { $0.candidateCount > 0 }
+        var bucketCounts: [Int: Int] = [:]
+        for sample in positiveSamples {
+            for bucket in sample.candidateBuckets {
+                bucketCounts[bucket, default: 0] += 1
+            }
+        }
+
+        let transientBucketCount = bucketCounts.values.filter { $0 < sparkleSamples.count - 1 }.count
+        let hasMultiSparkleFrame = positiveSamples.contains { $0.candidateCount >= 2 }
+
+        // A static white eye/body feature remains in one bucket. A real Shiny
+        // animation produces several small highlights that appear at changing
+        // positions across the short frame sequence.
+        guard positiveSamples.count >= 3,
+              bucketCounts.count >= 3,
+              transientBucketCount >= 2,
+              hasMultiSparkleFrame else { return }
+
+        isShinyDetected = true
+        liveActivityController.update(
+            frameCount: frameCount,
+            status: "Capturing",
+            recognitionSummary: recognition.summary(shinyDetected: true),
+            presentation: activityPresentation(for: recognition)
+        )
+    }
+
+    private func resetShinyEvidence() {
+        sparkleSamples.removeAll(keepingCapacity: true)
+        isShinyDetected = false
+    }
+
+    private func currentRecognitionSummary(fallback: String) -> String {
+        latestRecognition?.summary(shinyDetected: isShinyDetected) ?? fallback
+    }
+
+    private var currentActivityPresentation: PokeAssistActivityPresentation {
+        guard let latestRecognition else { return .scanning }
+        return activityPresentation(for: latestRecognition)
+    }
+
+    private func activityPresentation(for recognition: PokemonRecognition) -> PokeAssistActivityPresentation {
+        let mode: PokeAssistActivityMode
+        switch recognition.screen {
+        case .pokemonDetails: mode = .pokemon
+        case .appraisal: mode = .appraisal
+        case .map, .pokeAssist, .unknown: mode = .scanning
+        }
+
+        let rarity: PokeAssistActivityRarity
+        switch recognition.protection.rarity {
+        case .standard: rarity = .standard
+        case .legendary: rarity = .legendary
+        case .mythical: rarity = .mythical
+        case .ultraBeast: rarity = .ultraBeast
+        case .unknown: rarity = .unknown
+        }
+
+        return PokeAssistActivityPresentation(
+            mode: mode,
+            pokemonName: recognition.pokemonName,
+            combatPower: recognition.combatPower,
+            ivAttack: recognition.individualValues?.attack,
+            ivDefense: recognition.individualValues?.defense,
+            ivStamina: recognition.individualValues?.stamina,
+            ivPercentage: recognition.individualValues?.percentage,
+            shinyDetected: isShinyDetected,
+            rarity: rarity
         )
     }
 
@@ -219,7 +332,8 @@ final class CaptureManager: NSObject, ObservableObject {
         self.errorMessage = errorMessage
         liveActivityController.end(
             frameCount: frameCount,
-            recognitionSummary: latestRecognition?.summary ?? status
+            recognitionSummary: currentRecognitionSummary(fallback: status),
+            presentation: currentActivityPresentation
         )
         picker.remove(self)
         picker.isActive = false
@@ -253,7 +367,8 @@ extension CaptureManager: SCContentSharingPickerObserver {
             self.status = "Selection cancelled"
             self.liveActivityController.end(
                 frameCount: self.frameCount,
-                recognitionSummary: self.latestRecognition?.summary ?? "Selection cancelled"
+                recognitionSummary: self.currentRecognitionSummary(fallback: "Selection cancelled"),
+                presentation: self.currentActivityPresentation
             )
             self.picker.remove(self)
             self.picker.isActive = false

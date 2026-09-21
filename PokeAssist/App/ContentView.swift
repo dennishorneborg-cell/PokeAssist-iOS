@@ -79,8 +79,18 @@ struct ContentView: View {
                 .font(.headline)
 
             if let recognition = captureManager.latestRecognition {
-                Text(recognition.summary)
+                Text(recognition.summary(shinyDetected: captureManager.isShinyDetected))
                     .font(.title3.bold())
+
+                if captureManager.isShinyDetected {
+                    Label("Animated Shiny sparkle detected (beta)", systemImage: "sparkles")
+                        .font(.headline)
+                        .foregroundStyle(.yellow)
+                } else if recognition.isPokemonResult {
+                    Label("Shiny not visually confirmed", systemImage: "questionmark.diamond")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
 
                 Text("Vision confidence: \(recognition.confidence, format: .percent.precision(.fractionLength(0)))")
                     .font(.caption)
@@ -103,7 +113,7 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text("PokeAssist never marks a Pokémon as safe to transfer. Verify Shiny and costume indicators in Pokémon GO.")
+                    Text("No sparkle match is not proof that a Pokémon is not Shiny. PokeAssist never marks a Pokémon as safe to transfer.")
                         .font(.caption.bold())
                         .foregroundStyle(.orange)
                 }

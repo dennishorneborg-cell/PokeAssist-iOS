@@ -25,11 +25,15 @@ struct PokemonRecognition: Equatable, Sendable {
     }
 
     var summary: String {
+        summary(shinyDetected: false)
+    }
+
+    func summary(shinyDetected: Bool) -> String {
         switch screen {
         case .appraisal:
-            return joinedSummary(prefix: "Appraisal detected")
+            return joinedSummary(prefix: "Appraisal", shinyDetected: shinyDetected)
         case .pokemonDetails:
-            return joinedSummary(prefix: "Pokémon detected")
+            return joinedSummary(prefix: "Pokémon", shinyDetected: shinyDetected)
         case .map:
             return "Map detected"
         case .pokeAssist:
@@ -39,9 +43,18 @@ struct PokemonRecognition: Equatable, Sendable {
         }
     }
 
-    private func joinedSummary(prefix: String) -> String {
-        // Safety information leads because the Dynamic Island may truncate the tail.
-        var parts = [protection.compactSummary, prefix]
+    private func joinedSummary(prefix: String, shinyDetected: Bool) -> String {
+        var parts: [String] = []
+
+        if shinyDetected {
+            parts.append("✨ Shiny detected (beta)")
+        }
+
+        if protection.rarity.isProtectedClass {
+            parts.append("⛔ \(protection.rarity.label)")
+        }
+
+        parts.append(prefix)
 
         if let pokemonName {
             parts.append(pokemonName)

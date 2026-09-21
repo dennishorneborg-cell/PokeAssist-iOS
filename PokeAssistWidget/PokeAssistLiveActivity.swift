@@ -23,6 +23,8 @@ struct PokeAssistLiveActivity: Widget {
                 }
 
                 Spacer()
+
+                activityBadges(context.state.presentation)
             }
             .padding()
             .activityBackgroundTint(Color.black.opacity(0.9))
@@ -30,21 +32,21 @@ struct PokeAssistLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text("PA")
-                        .font(.headline.bold())
-                        .foregroundStyle(.green)
+                    activityBadges(context.state.presentation)
                 }
 
                 DynamicIslandExpandedRegion(.center) {
-                    Text("PokeAssist")
+                    Text(context.state.presentation.pokemonName ?? "PokeAssist")
                         .font(.headline)
                         .foregroundStyle(.white)
+                        .lineLimit(1)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.state.frameCount.formatted())
+                    Text(expandedMetric(context.state))
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(.white)
+                        .lineLimit(1)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
@@ -54,19 +56,81 @@ struct PokeAssistLiveActivity: Widget {
                         .lineLimit(2)
                 }
             } compactLeading: {
-                Text("PA")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.green)
+                activityBadges(context.state.presentation)
             } compactTrailing: {
-                Text(context.state.frameCount.formatted())
-                    .font(.caption.monospacedDigit())
+                Text(compactMetric(context.state))
+                    .font(.caption2.monospacedDigit().bold())
                     .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             } minimal: {
-                Text("P")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.green)
+                minimalBadge(context.state.presentation)
             }
             .keylineTint(.green)
+        }
+    }
+
+    @ViewBuilder
+    private func activityBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
+        HStack(spacing: 3) {
+            if presentation.shinyDetected {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.yellow)
+            }
+
+            if presentation.rarity.isProtected {
+                Image(systemName: raritySymbol(presentation.rarity))
+                    .foregroundStyle(.orange)
+            }
+
+            if !presentation.shinyDetected && !presentation.rarity.isProtected {
+                Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
+                    .foregroundStyle(.green)
+            }
+        }
+        .font(.caption.bold())
+    }
+
+    @ViewBuilder
+    private func minimalBadge(_ presentation: PokeAssistActivityPresentation) -> some View {
+        if presentation.shinyDetected {
+            Image(systemName: "sparkles")
+                .foregroundStyle(.yellow)
+        } else if presentation.rarity.isProtected {
+            Image(systemName: raritySymbol(presentation.rarity))
+                .foregroundStyle(.orange)
+        } else {
+            Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
+                .foregroundStyle(.green)
+        }
+    }
+
+    private func compactMetric(_ state: PokeAssistAttributes.ContentState) -> String {
+        if state.presentation.mode == .appraisal, let percentage = state.presentation.ivPercentage {
+            return "\(percentage)%"
+        }
+        if let combatPower = state.presentation.combatPower {
+            return "CP \(combatPower)"
+        }
+        return state.frameCount.formatted()
+    }
+
+    private func expandedMetric(_ state: PokeAssistAttributes.ContentState) -> String {
+        if state.presentation.mode == .appraisal, let percentage = state.presentation.ivPercentage {
+            return "IV \(percentage)%"
+        }
+        if let combatPower = state.presentation.combatPower {
+            return "CP \(combatPower)"
+        }
+        return state.frameCount.formatted()
+    }
+
+    private func raritySymbol(_ rarity: PokeAssistActivityRarity) -> String {
+        switch rarity {
+        case .legendary: return "crown.fill"
+        case .mythical: return "wand.and.stars"
+        case .ultraBeast: return "hexagon.fill"
+        case .standard, .unknown: return "viewfinder.circle.fill"
         }
     }
 }

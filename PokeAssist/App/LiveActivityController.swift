@@ -5,7 +5,12 @@ import Foundation
 final class LiveActivityController {
     private var activity: Activity<PokeAssistAttributes>?
 
-    func start(frameCount: Int, status: String, recognitionSummary: String) async -> String {
+    func start(
+        frameCount: Int,
+        status: String,
+        recognitionSummary: String,
+        presentation: PokeAssistActivityPresentation = .scanning
+    ) async -> String {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             return "Disabled in iPhone Settings"
         }
@@ -15,7 +20,8 @@ final class LiveActivityController {
                 activity,
                 frameCount: frameCount,
                 status: status,
-                recognitionSummary: recognitionSummary
+                recognitionSummary: recognitionSummary,
+                presentation: presentation
             )
             return activityStatus(activity)
         }
@@ -35,7 +41,8 @@ final class LiveActivityController {
         let state = PokeAssistAttributes.ContentState(
             frameCount: frameCount,
             status: status,
-            recognitionSummary: recognitionSummary
+            recognitionSummary: recognitionSummary,
+            presentation: presentation
         )
         let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)
 
@@ -48,13 +55,19 @@ final class LiveActivityController {
         }
     }
 
-    func update(frameCount: Int, status: String, recognitionSummary: String) {
+    func update(
+        frameCount: Int,
+        status: String,
+        recognitionSummary: String,
+        presentation: PokeAssistActivityPresentation = .scanning
+    ) {
         guard let activity else { return }
 
         let state = PokeAssistAttributes.ContentState(
             frameCount: frameCount,
             status: status,
-            recognitionSummary: recognitionSummary
+            recognitionSummary: recognitionSummary,
+            presentation: presentation
         )
         let content = ActivityContent(
             state: state,
@@ -71,12 +84,14 @@ final class LiveActivityController {
         _ activity: Activity<PokeAssistAttributes>,
         frameCount: Int,
         status: String,
-        recognitionSummary: String
+        recognitionSummary: String,
+        presentation: PokeAssistActivityPresentation
     ) async {
         let state = PokeAssistAttributes.ContentState(
             frameCount: frameCount,
             status: status,
-            recognitionSummary: recognitionSummary
+            recognitionSummary: recognitionSummary,
+            presentation: presentation
         )
         let content = ActivityContent(
             state: state,
@@ -91,14 +106,19 @@ final class LiveActivityController {
         "ActivityKit: \(String(describing: activity.activityState).capitalized)"
     }
 
-    func end(frameCount: Int, recognitionSummary: String) {
+    func end(
+        frameCount: Int,
+        recognitionSummary: String,
+        presentation: PokeAssistActivityPresentation = .scanning
+    ) {
         guard let activity else { return }
         self.activity = nil
 
         let state = PokeAssistAttributes.ContentState(
             frameCount: frameCount,
             status: "Stopped",
-            recognitionSummary: recognitionSummary
+            recognitionSummary: recognitionSummary,
+            presentation: presentation
         )
         let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)
 
