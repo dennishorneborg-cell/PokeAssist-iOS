@@ -9,12 +9,61 @@ private final class FrameDeliveryGate: @unchecked Sendable {
     private var isFramePending = false
     private var lastAcceptedTime: TimeInterval = 0
     private var callbackCount = 0
+    private var validFrameCount = 0
+    private var invalidSampleCount = 0
+    private var notReadySampleCount = 0
+    private var missingImageBufferCount = 0
     private var droppedCount = 0
+    private var timestampIssueCount = 0
+    private var lastPresentationTime: Double?
+    private var maximumPresentationGapMilliseconds = 0.0
 
-    func begin() -> Bool {
+    func recordScreenCallback() {
+        lock.lock()
+        callbackCount += 1
+        lock.unlock()
+    }
+
+    func recordInvalidSample() {
+        lock.lock()
+        invalidSampleCount += 1
+        lock.unlock()
+    }
+
+    func recordNotReadySample() {
+        lock.lock()
+        notReadySampleCount += 1
+        lock.unlock()
+    }
+
+    func recordMissingImageBuffer() {
+        lock.lock()
+        missingImageBufferCount += 1
+        lock.unlock()
+    }
+
+    func begin(presentationTime: CMTime) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        callbackCount += 1
+        validFrameCount += 1
+        let presentationSeconds = CMTimeGetSeconds(presentationTime)
+        if presentationSeconds.isFinite, presentationSeconds >= 0 {
+            if let lastPresentationTime {
+                let gap = presentationSeconds - lastPresentationTime
+                if gap > 0 {
+                    maximumPresentationGapMilliseconds = max(
+                        maximumPresentationGapMilliseconds,
+                        gap * 1000
+                    )
+                } else {
+                    timestampIssueCount += 1
+                }
+            }
+            lastPresentationTime = presentationSeconds
+        } else {
+            timestampIssueCount += 1
+        }
+
         let now = ProcessInfo.processInfo.systemUptime
         guard !isFramePending, now - lastAcceptedTime >= 1.0 / 4.0 else {
             droppedCount += 1
@@ -36,14 +85,41 @@ private final class FrameDeliveryGate: @unchecked Sendable {
         isFramePending = false
         lastAcceptedTime = 0
         callbackCount = 0
+        validFrameCount = 0
+        invalidSampleCount = 0
+        notReadySampleCount = 0
+        missingImageBufferCount = 0
         droppedCount = 0
+        timestampIssueCount = 0
+        lastPresentationTime = nil
+        maximumPresentationGapMilliseconds = 0
         lock.unlock()
     }
 
-    func counts() -> (callbacks: Int, dropped: Int) {
+    func snapshot() -> (
+        callbacks: Int,
+        validFrames: Int,
+        invalidSamples: Int,
+        notReadySamples: Int,
+        missingImageBuffers: Int,
+        dropped: Int,
+        timestampIssues: Int,
+        maximumGapMilliseconds: Double
+    ) {
         lock.lock()
         defer { lock.unlock() }
-        return (callbackCount, droppedCount)
+        let snapshot = (
+            callbackCount,
+            validFrameCount,
+            invalidSampleCount,
+            notReadySampleCount,
+            missingImageBufferCount,
+            droppedCount,
+            timestampIssueCount,
+            maximumPresentationGapMilliseconds
+        )
+        maximumPresentationGapMilliseconds = 0
+        return snapshot
     }
 }
 
@@ -51,9 +127,13 @@ struct CaptureDiagnostics {
     var elapsed = "—"
     var thermalState = "—"
     var memoryMB = 0
-    var callbacksPerSecond = 0.0
+    var captureCallbacksPerSecond = 0.0
+    var captureFramesPerSecond = 0.0
     var processedPerSecond = 0.0
     var droppedPercent = 0
+    var invalidCaptureBuffers = 0
+    var maximumCaptureGapMilliseconds = 0.0
+    var captureTimestampIssues = 0
     var visionAverageMilliseconds = 0.0
     var visionLastMilliseconds = 0.0
     var visionSkipped = 0
@@ -94,7 +174,12 @@ final class CaptureManager: NSObject, ObservableObject {
     private var totalFrameCount = 0
     private var captureStartedAt: TimeInterval?
     private var diagnosticsTask: Task<Void, Never>?
-    private var lastDiagnosticSample: (time: TimeInterval, callbacks: Int, processed: Int)?
+    private var lastDiagnosticSample: (
+        time: TimeInterval,
+        callbacks: Int,
+        validFrames: Int,
+        processed: Int
+    )?
     private var pendingRecognitionIdentity: RecognitionIdentity?
     private var pendingRecognitionStartedAt: TimeInterval?
     private var lastRecognitionConfirmationMilliseconds: Double?
@@ -271,7 +356,7 @@ final class CaptureManager: NSObject, ObservableObject {
 
     private func refreshDiagnostics() {
         let now = ProcessInfo.processInfo.systemUptime
-        let counts = frameDeliveryGate.counts()
+        let capture = frameDeliveryGate.snapshot()
         let uptime = captureStartedAt.map { max(0, now - $0) } ?? 0
         let elapsedSeconds = Int(uptime)
         let elapsed = String(format: "%02d:%02d", elapsedSeconds / 60, elapsedSeconds % 60)
@@ -286,10 +371,19 @@ final class CaptureManager: NSObject, ObservableObject {
 
         let previous = lastDiagnosticSample
         let interval = previous.map { max(0.001, now - $0.time) } ?? 0
-        let callbacksPerSecond = previous.map { Double(counts.callbacks - $0.callbacks) / interval } ?? 0
+        let captureCallbacksPerSecond = previous.map {
+            Double(capture.callbacks - $0.callbacks) / interval
+        } ?? 0
+        let captureFramesPerSecond = previous.map {
+            Double(capture.validFrames - $0.validFrames) / interval
+        } ?? 0
         let processedPerSecond = previous.map { Double(totalFrameCount - $0.processed) / interval } ?? 0
-        let denominator = counts.callbacks
-        let droppedPercent = denominator > 0 ? counts.dropped * 100 / denominator : 0
+        let droppedPercent = capture.validFrames > 0
+            ? capture.dropped * 100 / capture.validFrames
+            : 0
+        let invalidCaptureBuffers = capture.invalidSamples
+            + capture.notReadySamples
+            + capture.missingImageBuffers
         let analysis = frameAnalyzer.metricsSnapshot()
         let appearance = appearanceAnalyzer.metricsSnapshot()
         let pendingRecognitionMilliseconds = pendingRecognitionStartedAt.map {
@@ -300,9 +394,13 @@ final class CaptureManager: NSObject, ObservableObject {
             elapsed: elapsed,
             thermalState: thermal,
             memoryMB: Self.currentMemoryFootprintMB(),
-            callbacksPerSecond: callbacksPerSecond,
+            captureCallbacksPerSecond: captureCallbacksPerSecond,
+            captureFramesPerSecond: captureFramesPerSecond,
             processedPerSecond: processedPerSecond,
             droppedPercent: droppedPercent,
+            invalidCaptureBuffers: invalidCaptureBuffers,
+            maximumCaptureGapMilliseconds: capture.maximumGapMilliseconds,
+            captureTimestampIssues: capture.timestampIssues,
             visionAverageMilliseconds: analysis.averageMilliseconds,
             visionLastMilliseconds: analysis.lastMilliseconds,
             visionSkipped: analysis.skipped,
@@ -313,7 +411,7 @@ final class CaptureManager: NSObject, ObservableObject {
             pendingRecognitionMilliseconds: pendingRecognitionMilliseconds,
             recognitionCandidateRestarts: recognitionCandidateRestarts
         )
-        lastDiagnosticSample = (now, counts.callbacks, totalFrameCount)
+        lastDiagnosticSample = (now, capture.callbacks, capture.validFrames, totalFrameCount)
     }
 
     private static func currentMemoryFootprintMB() -> Int {
@@ -649,20 +747,30 @@ extension CaptureManager: SCStreamOutput {
         didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
         of type: SCStreamOutputType
     ) {
-        guard
-            type == .screen,
-            sampleBuffer.isValid,
-            CMSampleBufferDataIsReady(sampleBuffer),
-            let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
-        else {
+        guard type == .screen else { return }
+        let deliveryGate = frameDeliveryGate
+        deliveryGate.recordScreenCallback()
+
+        guard sampleBuffer.isValid else {
+            deliveryGate.recordInvalidSample()
+            return
+        }
+        guard CMSampleBufferDataIsReady(sampleBuffer) else {
+            deliveryGate.recordNotReadySample()
+            return
+        }
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            deliveryGate.recordMissingImageBuffer()
             return
         }
 
         // ScreenCaptureKit's iOS configuration doesn't expose a frame-rate
         // limit. Process at most 4 fresh frames per second and drop the rest
-        // before they can enqueue MainActor work or analysis.
-        let deliveryGate = frameDeliveryGate
-        guard deliveryGate.begin() else { return }
+        // before they can enqueue MainActor work or analysis. We still count
+        // every callback and sample timestamp to diagnose source-side stalls.
+        guard deliveryGate.begin(
+            presentationTime: CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        ) else { return }
 
         Task { @MainActor [weak self] in
             defer { deliveryGate.end() }

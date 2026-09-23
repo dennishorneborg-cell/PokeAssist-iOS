@@ -195,12 +195,24 @@ struct ContentView: View {
                     : "\(captureManager.diagnostics.memoryMB) MB"
             )
             diagnosticRow(
-                "Stream / processed",
+                "Capture / processed",
                 value: String(
                     format: "%.1f / %.1f fps",
-                    captureManager.diagnostics.callbacksPerSecond,
+                    captureManager.diagnostics.captureFramesPerSecond,
                     captureManager.diagnostics.processedPerSecond
                 )
+            )
+            diagnosticRow(
+                "ScreenCaptureKit callbacks",
+                value: String(format: "%.1f fps", captureManager.diagnostics.captureCallbacksPerSecond)
+            )
+            diagnosticRow(
+                "Largest frame gap",
+                value: String(format: "%.0f ms", captureManager.diagnostics.maximumCaptureGapMilliseconds)
+            )
+            diagnosticRow(
+                "Invalid buffers / timestamp issues",
+                value: "\(captureManager.diagnostics.invalidCaptureBuffers) / \(captureManager.diagnostics.captureTimestampIssues)"
             )
             diagnosticRow(
                 "Frames gated",
