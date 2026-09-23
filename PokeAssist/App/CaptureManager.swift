@@ -143,6 +143,9 @@ struct CaptureDiagnostics {
     var lastRecognitionConfirmationMilliseconds: Double?
     var pendingRecognitionMilliseconds: Double?
     var recognitionCandidateRestarts = 0
+    var liveActivityQueueMilliseconds = 0.0
+    var liveActivityLastRequestMilliseconds = 0.0
+    var liveActivityAverageRequestMilliseconds = 0.0
 }
 
 @MainActor
@@ -264,6 +267,7 @@ final class CaptureManager: NSObject, ObservableObject {
             frameDeliveryGate.reset()
             frameAnalyzer.resetMetrics()
             appearanceAnalyzer.resetMetrics()
+            liveActivityController.resetMetrics()
             lastDiagnosticSample = nil
             diagnostics = CaptureDiagnostics()
             isCapturing = true
@@ -386,6 +390,7 @@ final class CaptureManager: NSObject, ObservableObject {
             + capture.missingImageBuffers
         let analysis = frameAnalyzer.metricsSnapshot()
         let appearance = appearanceAnalyzer.metricsSnapshot()
+        let liveActivity = liveActivityController.metricsSnapshot()
         let pendingRecognitionMilliseconds = pendingRecognitionStartedAt.map {
             max(0, now - $0) * 1000
         }
@@ -409,7 +414,10 @@ final class CaptureManager: NSObject, ObservableObject {
             appearanceSkipped: appearance.skipped,
             lastRecognitionConfirmationMilliseconds: lastRecognitionConfirmationMilliseconds,
             pendingRecognitionMilliseconds: pendingRecognitionMilliseconds,
-            recognitionCandidateRestarts: recognitionCandidateRestarts
+            recognitionCandidateRestarts: recognitionCandidateRestarts,
+            liveActivityQueueMilliseconds: liveActivity.lastQueueMilliseconds,
+            liveActivityLastRequestMilliseconds: liveActivity.lastRequestMilliseconds,
+            liveActivityAverageRequestMilliseconds: liveActivity.averageRequestMilliseconds
         )
         lastDiagnosticSample = (now, capture.callbacks, capture.validFrames, totalFrameCount)
     }

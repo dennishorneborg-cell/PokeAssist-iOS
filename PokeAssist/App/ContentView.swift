@@ -258,8 +258,20 @@ struct ContentView: View {
                 "Candidate restarts",
                 value: captureManager.diagnostics.recognitionCandidateRestarts.formatted()
             )
+            diagnosticRow(
+                "Live Activity queue wait",
+                value: String(format: "%.0f ms", captureManager.diagnostics.liveActivityQueueMilliseconds)
+            )
+            diagnosticRow(
+                "ActivityKit request avg / last",
+                value: String(
+                    format: "%.0f / %.0f ms",
+                    captureManager.diagnostics.liveActivityAverageRequestMilliseconds,
+                    captureManager.diagnostics.liveActivityLastRequestMilliseconds
+                )
+            )
 
-            Text("Sampled every 10 seconds. Measurements stay on this iPhone; no frames or diagnostics are uploaded.")
+            Text("Sampled every 10 seconds. ActivityKit timings measure update requests, not the system's final Dynamic Island rendering. Measurements stay on this iPhone; no frames or diagnostics are uploaded.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

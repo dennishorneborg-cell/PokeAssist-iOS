@@ -5,7 +5,32 @@ import Foundation
 final class LiveActivityController {
     private var activity: Activity<PokeAssistAttributes>?
     private var pendingUpdateState: PokeAssistAttributes.ContentState?
+    private var pendingUpdateEnqueuedAt: TimeInterval?
     private var updateTask: Task<Void, Never>?
+    private var activityUpdateCount = 0
+    private(set) var lastUpdateQueueMilliseconds = 0.0
+    private(set) var lastUpdateRequestMilliseconds = 0.0
+    private var averageUpdateRequestMilliseconds = 0.0
+
+    func metricsSnapshot() -> (
+        lastQueueMilliseconds: Double,
+        lastRequestMilliseconds: Double,
+        averageRequestMilliseconds: Double
+    ) {
+        (
+            lastUpdateQueueMilliseconds,
+            lastUpdateRequestMilliseconds,
+            averageUpdateRequestMilliseconds
+        )
+    }
+
+    func resetMetrics() {
+        activityUpdateCount = 0
+        lastUpdateQueueMilliseconds = 0
+        lastUpdateRequestMilliseconds = 0
+        averageUpdateRequestMilliseconds = 0
+        pendingUpdateEnqueuedAt = nil
+    }
 
     func start(
         frameCount: Int,
@@ -72,6 +97,7 @@ final class LiveActivityController {
             presentation: presentation
         )
         pendingUpdateState = state
+        pendingUpdateEnqueuedAt = ProcessInfo.processInfo.systemUptime
         guard updateTask == nil else { return }
 
         updateTask = Task { @MainActor [weak self] in
@@ -82,12 +108,20 @@ final class LiveActivityController {
     private func flushPendingUpdates(for activity: Activity<PokeAssistAttributes>) async {
         while !Task.isCancelled, let state = pendingUpdateState {
             pendingUpdateState = nil
+            let requestStart = ProcessInfo.processInfo.systemUptime
+            lastUpdateQueueMilliseconds = pendingUpdateEnqueuedAt.map {
+                max(0, requestStart - $0) * 1000
+            } ?? 0
+            pendingUpdateEnqueuedAt = nil
             let content = ActivityContent(
                 state: state,
                 staleDate: Date().addingTimeInterval(10),
                 relevanceScore: 100
             )
+            let activityCallStart = ProcessInfo.processInfo.systemUptime
             await activity.update(content)
+            let requestMilliseconds = (ProcessInfo.processInfo.systemUptime - activityCallStart) * 1000
+            recordUpdateRequest(requestMilliseconds)
         }
 
         updateTask = nil
@@ -112,7 +146,19 @@ final class LiveActivityController {
             relevanceScore: 100
         )
 
+        let activityCallStart = ProcessInfo.processInfo.systemUptime
         await activity.update(content)
+        recordUpdateRequest((ProcessInfo.processInfo.systemUptime - activityCallStart) * 1000)
+    }
+
+    private func recordUpdateRequest(_ durationMilliseconds: Double) {
+        activityUpdateCount += 1
+        lastUpdateRequestMilliseconds = durationMilliseconds
+        if activityUpdateCount == 1 {
+            averageUpdateRequestMilliseconds = durationMilliseconds
+        } else {
+            averageUpdateRequestMilliseconds += (durationMilliseconds - averageUpdateRequestMilliseconds) / 8
+        }
     }
 
     private func activityStatus(_ activity: Activity<PokeAssistAttributes>) -> String {
@@ -127,6 +173,7 @@ final class LiveActivityController {
         guard let activity else { return }
         self.activity = nil
         pendingUpdateState = nil
+        pendingUpdateEnqueuedAt = nil
         updateTask?.cancel()
         updateTask = nil
 
