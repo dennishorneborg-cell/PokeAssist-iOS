@@ -60,6 +60,9 @@ struct CaptureDiagnostics {
     var appearanceAverageMilliseconds = 0.0
     var appearanceLastMilliseconds = 0.0
     var appearanceSkipped = 0
+    var lastRecognitionConfirmationMilliseconds: Double?
+    var pendingRecognitionMilliseconds: Double?
+    var recognitionCandidateRestarts = 0
 }
 
 @MainActor
@@ -93,6 +96,9 @@ final class CaptureManager: NSObject, ObservableObject {
     private var diagnosticsTask: Task<Void, Never>?
     private var lastDiagnosticSample: (time: TimeInterval, callbacks: Int, processed: Int)?
     private var pendingRecognitionIdentity: RecognitionIdentity?
+    private var pendingRecognitionStartedAt: TimeInterval?
+    private var lastRecognitionConfirmationMilliseconds: Double?
+    private var recognitionCandidateRestarts = 0
     private var consecutiveRecognitionMatches = 0
     private var consecutiveNonPokemonResults = 0
     private var combatPowerIsCached = false
@@ -182,6 +188,9 @@ final class CaptureManager: NSObject, ObservableObject {
             isShinyDetected = false
             isEventDetected = false
             pendingRecognitionIdentity = nil
+            pendingRecognitionStartedAt = nil
+            lastRecognitionConfirmationMilliseconds = nil
+            recognitionCandidateRestarts = 0
             consecutiveRecognitionMatches = 0
             consecutiveNonPokemonResults = 0
             combatPowerIsCached = false
@@ -283,6 +292,9 @@ final class CaptureManager: NSObject, ObservableObject {
         let droppedPercent = denominator > 0 ? counts.dropped * 100 / denominator : 0
         let analysis = frameAnalyzer.metricsSnapshot()
         let appearance = appearanceAnalyzer.metricsSnapshot()
+        let pendingRecognitionMilliseconds = pendingRecognitionStartedAt.map {
+            max(0, now - $0) * 1000
+        }
 
         diagnostics = CaptureDiagnostics(
             elapsed: elapsed,
@@ -296,7 +308,10 @@ final class CaptureManager: NSObject, ObservableObject {
             visionSkipped: analysis.skipped,
             appearanceAverageMilliseconds: appearance.averageMilliseconds,
             appearanceLastMilliseconds: appearance.lastMilliseconds,
-            appearanceSkipped: appearance.skipped
+            appearanceSkipped: appearance.skipped,
+            lastRecognitionConfirmationMilliseconds: lastRecognitionConfirmationMilliseconds,
+            pendingRecognitionMilliseconds: pendingRecognitionMilliseconds,
+            recognitionCandidateRestarts: recognitionCandidateRestarts
         )
         lastDiagnosticSample = (now, counts.callbacks, totalFrameCount)
     }
@@ -323,6 +338,7 @@ final class CaptureManager: NSObject, ObservableObject {
 
         guard recognition.screen != .pokeAssist else {
             pendingRecognitionIdentity = nil
+            pendingRecognitionStartedAt = nil
             consecutiveRecognitionMatches = 0
             consecutiveNonPokemonResults = 0
             combatPowerIsCached = false
@@ -338,6 +354,7 @@ final class CaptureManager: NSObject, ObservableObject {
             guard consecutiveNonPokemonResults >= 4 else { return }
 
             pendingRecognitionIdentity = nil
+            pendingRecognitionStartedAt = nil
             consecutiveRecognitionMatches = 0
             consecutiveNonPokemonResults = 0
             resetAppearanceEvidence()
@@ -361,8 +378,12 @@ final class CaptureManager: NSObject, ObservableObject {
             if identity == pendingRecognitionIdentity {
                 consecutiveRecognitionMatches += 1
             } else {
+                if pendingRecognitionStartedAt != nil {
+                    recognitionCandidateRestarts += 1
+                }
                 pendingRecognitionIdentity = identity
                 consecutiveRecognitionMatches = 1
+                pendingRecognitionStartedAt = ProcessInfo.processInfo.systemUptime
             }
 
             // Require the same species/CP evidence twice before presenting a
@@ -373,6 +394,12 @@ final class CaptureManager: NSObject, ObservableObject {
             let previousIdentity = latestRecognition.map {
                 RecognitionIdentity(pokemonName: $0.pokemonName, combatPower: $0.combatPower)
             }
+            if identity != previousIdentity,
+               let startedAt = pendingRecognitionStartedAt {
+                lastRecognitionConfirmationMilliseconds =
+                    (ProcessInfo.processInfo.systemUptime - startedAt) * 1000
+            }
+            pendingRecognitionStartedAt = nil
             if identity != previousIdentity {
                 resetAppearanceEvidence()
             }

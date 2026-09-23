@@ -230,6 +230,22 @@ struct ContentView: View {
                 "Appearance skipped",
                 value: captureManager.diagnostics.appearanceSkipped.formatted()
             )
+            diagnosticRow(
+                "Last Pokémon confirmation",
+                value: captureManager.diagnostics.lastRecognitionConfirmationMilliseconds.map {
+                    String(format: "%.0f ms", $0)
+                } ?? "—"
+            )
+            diagnosticRow(
+                "Pending candidate age",
+                value: captureManager.diagnostics.pendingRecognitionMilliseconds.map {
+                    String(format: "%.1f s", $0 / 1000)
+                } ?? "—"
+            )
+            diagnosticRow(
+                "Candidate restarts",
+                value: captureManager.diagnostics.recognitionCandidateRestarts.formatted()
+            )
 
             Text("Sampled every 10 seconds. Measurements stay on this iPhone; no frames or diagnostics are uploaded.")
                 .font(.caption)
