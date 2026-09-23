@@ -2,6 +2,13 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
+private struct CompactActivityBadge: Identifiable {
+    let id: String
+    let symbol: String
+    let color: Color
+    var text: String?
+}
+
 struct PokeAssistLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PokeAssistAttributes.self) { context in
@@ -136,37 +143,26 @@ struct PokeAssistLiveActivity: Widget {
 
     @ViewBuilder
     private func compactBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
-        HStack(spacing: 0) {
-            Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
-                .foregroundStyle(.green)
-
-            if presentation.shinyDetected {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(.yellow)
-            }
-            if presentation.eventDetected {
-                Image(systemName: "party.popper.fill")
-                    .foregroundStyle(.purple)
-            }
-            if presentation.rarity.isProtected {
-                Image(systemName: raritySymbol(presentation.rarity))
-                    .foregroundStyle(.orange)
-            }
-            if presentation.dynamaxDetected {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    .foregroundStyle(.pink)
-            }
-            if presentation.size != .none {
-                Text(presentation.size == .xxl ? "XL" : "XS")
-                    .font(.system(size: compactBadgePointSize(presentation) * 0.75, weight: .black, design: .rounded))
-                    .foregroundStyle(.cyan)
-            }
-            if presentation.pvpCandidate {
-                Image(systemName: "shield.fill")
-                    .foregroundStyle(.blue)
+        // Compact leading has a fixed, very narrow system-provided width.
+        // Keep the most useful five badges at most; otherwise SwiftUI clips
+        // trailing symbols and they appear as colored slivers.
+        let badges = compactBadgeModels(presentation).prefix(5)
+        HStack(spacing: 1) {
+            ForEach(Array(badges)) { badge in
+                if let text = badge.text {
+                    Text(text)
+                        .font(.system(size: compactBadgePointSize(presentation) * 0.75, weight: .black, design: .rounded))
+                        .foregroundStyle(badge.color)
+                } else {
+                    Image(systemName: badge.symbol)
+                        .foregroundStyle(badge.color)
+                }
             }
         }
         .font(.system(size: compactBadgePointSize(presentation), weight: .bold))
+        .lineLimit(1)
+        .minimumScaleFactor(0.65)
+        .accessibilityLabel("PokeAssist status and detected traits")
     }
 
     @ViewBuilder
@@ -216,6 +212,7 @@ struct PokeAssistLiveActivity: Widget {
 
     private func badgeCount(_ presentation: PokeAssistActivityPresentation) -> Int {
         1
+            + (ivRatingBadge(presentation) == nil ? 0 : 1)
             + (presentation.shinyDetected ? 1 : 0)
             + (presentation.eventDetected ? 1 : 0)
             + (presentation.rarity.isProtected ? 1 : 0)
@@ -225,17 +222,56 @@ struct PokeAssistLiveActivity: Widget {
     }
 
     private func compactBadgePointSize(_ presentation: PokeAssistActivityPresentation) -> CGFloat {
-        switch badgeCount(presentation) {
-        case 1...3: return 14
-        case 4: return 11
-        case 5: return 10
-        default: return 8
+        switch min(badgeCount(presentation), 5) {
+        case 1...2: return 12
+        case 3: return 10
+        case 4: return 8
+        default: return 6.5
         }
     }
 
+    private func compactBadgeModels(_ presentation: PokeAssistActivityPresentation) -> [CompactActivityBadge] {
+        var badges = [CompactActivityBadge(
+            id: "mode",
+            symbol: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill",
+            color: .green
+        )]
+
+        if let rating = ivRatingBadge(presentation) {
+            badges.append(CompactActivityBadge(id: "iv", symbol: rating.symbol, color: rating.color))
+        }
+        if presentation.shinyDetected {
+            badges.append(CompactActivityBadge(id: "shiny", symbol: "sparkles", color: .yellow))
+        }
+        if presentation.eventDetected {
+            badges.append(CompactActivityBadge(id: "event", symbol: "party.popper.fill", color: .purple))
+        }
+        if presentation.rarity.isProtected {
+            badges.append(CompactActivityBadge(id: "rarity", symbol: raritySymbol(presentation.rarity), color: .orange))
+        }
+        if presentation.dynamaxDetected {
+            badges.append(CompactActivityBadge(
+                id: "dynamax",
+                symbol: "arrow.up.left.and.arrow.down.right",
+                color: .pink
+            ))
+        }
+        if presentation.size != .none {
+            badges.append(CompactActivityBadge(
+                id: "size",
+                symbol: "",
+                color: .cyan,
+                text: presentation.size == .xxl ? "L" : "S"
+            ))
+        }
+        if presentation.pvpCandidate {
+            badges.append(CompactActivityBadge(id: "pvp", symbol: "shield.fill", color: .blue))
+        }
+        return badges
+    }
+
     private func minimalBadgePointSize(_ presentation: PokeAssistActivityPresentation) -> CGFloat {
-        let count = badgeCount(presentation) + (ivRatingBadge(presentation) == nil ? 0 : 1)
-        switch count {
+        switch badgeCount(presentation) {
         case 1...3: return 11
         case 4: return 9.5
         case 5: return 8.5
