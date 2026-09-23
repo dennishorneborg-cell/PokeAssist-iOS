@@ -182,6 +182,10 @@ struct ContentView: View {
 
             diagnosticRow("Capture time", value: captureManager.diagnostics.elapsed)
             diagnosticRow(
+                "Automatic capture restarts",
+                value: captureManager.diagnostics.automaticCaptureRestarts.formatted()
+            )
+            diagnosticRow(
                 "Thermal state",
                 value: captureManager.diagnostics.thermalState,
                 tint: captureManager.diagnostics.thermalState == "Critical"
@@ -314,7 +318,7 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .disabled(!captureManager.isCapturing)
+            .disabled(!captureManager.isCapturing || captureManager.isPreparing)
         }
     }
 

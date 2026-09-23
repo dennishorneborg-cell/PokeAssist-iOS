@@ -146,6 +146,7 @@ struct CaptureDiagnostics {
     var liveActivityQueueMilliseconds = 0.0
     var liveActivityLastRequestMilliseconds = 0.0
     var liveActivityAverageRequestMilliseconds = 0.0
+    var automaticCaptureRestarts = 0
 }
 
 @MainActor
@@ -174,9 +175,12 @@ final class CaptureManager: NSObject, ObservableObject {
     nonisolated private let frameDeliveryGate = FrameDeliveryGate()
 
     private var stream: SCStream?
+    private var selectedContentFilter: SCContentFilter?
     private var totalFrameCount = 0
     private var captureStartedAt: TimeInterval?
     private var diagnosticsTask: Task<Void, Never>?
+    private var captureRefreshTask: Task<Void, Never>?
+    private var automaticCaptureRestarts = 0
     private var lastDiagnosticSample: (
         time: TimeInterval,
         callbacks: Int,
@@ -226,6 +230,10 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     func stopCapture() async {
+        captureRefreshTask?.cancel()
+        captureRefreshTask = nil
+        selectedContentFilter = nil
+
         guard let activeStream = stream else {
             resetStoppedState()
             return
@@ -246,6 +254,7 @@ final class CaptureManager: NSObject, ObservableObject {
         isPreparing = true
         errorMessage = nil
         status = "Starting capture"
+        selectedContentFilter = filter
 
         if let activeStream = stream {
             try? await activeStream.stopCapture()
@@ -296,9 +305,13 @@ final class CaptureManager: NSObject, ObservableObject {
                 presentation: .scanning
             )
             startDiagnosticsSampling()
+            startAutomaticCaptureRefreshIfNeeded()
             refreshDiagnostics()
         } catch {
             stream = nil
+            captureRefreshTask?.cancel()
+            captureRefreshTask = nil
+            selectedContentFilter = nil
             isCapturing = false
             isPreparing = false
             status = "Capture failed"
@@ -310,6 +323,51 @@ final class CaptureManager: NSObject, ObservableObject {
                 recognitionSummary: currentRecognitionSummary(fallback: "Capture failed"),
                 presentation: currentActivityPresentation
             )
+        }
+    }
+
+    private func startAutomaticCaptureRefreshIfNeeded() {
+        guard captureRefreshTask == nil else { return }
+        captureRefreshTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: 240_000_000_000)
+                } catch {
+                    return
+                }
+
+                guard let self, self.isCapturing else { return }
+                await self.restartCaptureStream()
+            }
+        }
+    }
+
+    private func restartCaptureStream() async {
+        guard isCapturing, let filter = selectedContentFilter else { return }
+
+        isPreparing = true
+        status = "Refreshing capture"
+        let previousStream = stream
+        stream = nil
+
+        if let previousStream {
+            do {
+                try await previousStream.stopCapture()
+            } catch {
+                finishCapture(
+                    status: "Capture refresh failed",
+                    errorMessage: error.localizedDescription
+                )
+                return
+            }
+            try? previousStream.removeStreamOutput(self, type: .screen)
+        }
+
+        guard isPreparing, selectedContentFilter != nil else { return }
+        await startCapture(with: filter)
+        if isCapturing {
+            automaticCaptureRestarts += 1
+            refreshDiagnostics()
         }
     }
 
@@ -410,7 +468,8 @@ final class CaptureManager: NSObject, ObservableObject {
             recognitionCandidateRestarts: recognitionCandidateRestarts,
             liveActivityQueueMilliseconds: liveActivity.lastQueueMilliseconds,
             liveActivityLastRequestMilliseconds: liveActivity.lastRequestMilliseconds,
-            liveActivityAverageRequestMilliseconds: liveActivity.averageRequestMilliseconds
+            liveActivityAverageRequestMilliseconds: liveActivity.averageRequestMilliseconds,
+            automaticCaptureRestarts: automaticCaptureRestarts
         )
         lastDiagnosticSample = (now, capture.callbacks, capture.validFrames, totalFrameCount)
     }
@@ -653,6 +712,9 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     private func resetStoppedState() {
+        captureRefreshTask?.cancel()
+        captureRefreshTask = nil
+        selectedContentFilter = nil
         isCapturing = false
         isPreparing = false
         status = "Stopped"
@@ -670,6 +732,9 @@ final class CaptureManager: NSObject, ObservableObject {
     private func finishCapture(status: String, errorMessage: String?) {
         diagnosticsTask?.cancel()
         diagnosticsTask = nil
+        captureRefreshTask?.cancel()
+        captureRefreshTask = nil
+        selectedContentFilter = nil
         refreshDiagnostics()
         captureStartedAt = nil
         if let activeStream = stream {
@@ -704,6 +769,7 @@ extension CaptureManager: SCContentSharingPickerObserver {
         for stream: SCStream?
     ) {
         Task { @MainActor [weak self] in
+            self?.automaticCaptureRestarts = 0
             await self?.startCapture(with: filter)
         }
     }
