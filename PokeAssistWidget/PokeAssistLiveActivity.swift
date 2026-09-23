@@ -136,7 +136,7 @@ struct PokeAssistLiveActivity: Widget {
 
     @ViewBuilder
     private func compactBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
-        HStack(spacing: 1) {
+        HStack(spacing: 0) {
             Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
                 .foregroundStyle(.green)
 
@@ -158,7 +158,7 @@ struct PokeAssistLiveActivity: Widget {
             }
             if presentation.size != .none {
                 Text(presentation.size == .xxl ? "XL" : "XS")
-                    .font(.system(size: 7, weight: .black, design: .rounded))
+                    .font(.system(size: compactBadgePointSize(presentation) * 0.75, weight: .black, design: .rounded))
                     .foregroundStyle(.cyan)
             }
             if presentation.pvpCandidate {
@@ -166,15 +166,15 @@ struct PokeAssistLiveActivity: Widget {
                     .foregroundStyle(.blue)
             }
         }
-        .font(.system(size: 8, weight: .bold))
+        .font(.system(size: compactBadgePointSize(presentation), weight: .bold))
     }
 
     @ViewBuilder
     private func minimalBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
         // ScreenCaptureKit's recording indicator makes iOS choose the minimal
-        // Live Activity presentation. It offers one tiny content slot, so all
-        // current traits must be encoded in one deliberately dense view.
-        HStack(spacing: -1) {
+        // Live Activity presentation. Scale the SF Symbols to the available
+        // trait count so the common capture + Shiny + event case stays legible.
+        HStack(spacing: 0) {
             Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
                 .foregroundStyle(.green)
 
@@ -196,7 +196,7 @@ struct PokeAssistLiveActivity: Widget {
             }
             if presentation.size != .none {
                 Text(presentation.size == .xxl ? "L" : "S")
-                    .font(.system(size: 5.5, weight: .black, design: .rounded))
+                    .font(.system(size: minimalBadgePointSize(presentation) * 0.75, weight: .black, design: .rounded))
                     .foregroundStyle(.cyan)
             }
             if presentation.pvpCandidate {
@@ -204,9 +204,37 @@ struct PokeAssistLiveActivity: Widget {
                     .foregroundStyle(.blue)
             }
         }
-        .font(.system(size: 6.5, weight: .bold))
+        .font(.system(size: minimalBadgePointSize(presentation), weight: .bold))
         .lineLimit(1)
         .accessibilityLabel("PokeAssist status and detected traits")
+    }
+
+    private func badgeCount(_ presentation: PokeAssistActivityPresentation) -> Int {
+        1
+            + (presentation.shinyDetected ? 1 : 0)
+            + (presentation.eventDetected ? 1 : 0)
+            + (presentation.rarity.isProtected ? 1 : 0)
+            + (presentation.dynamaxDetected ? 1 : 0)
+            + (presentation.size != .none ? 1 : 0)
+            + (presentation.pvpCandidate ? 1 : 0)
+    }
+
+    private func compactBadgePointSize(_ presentation: PokeAssistActivityPresentation) -> CGFloat {
+        switch badgeCount(presentation) {
+        case 1...3: return 14
+        case 4: return 11
+        case 5: return 10
+        default: return 8
+        }
+    }
+
+    private func minimalBadgePointSize(_ presentation: PokeAssistActivityPresentation) -> CGFloat {
+        switch badgeCount(presentation) {
+        case 1...3: return 11
+        case 4: return 9.5
+        case 5: return 8.5
+        default: return 6.5
+        }
     }
 
     private func compactMetric(_ state: PokeAssistAttributes.ContentState) -> String {
