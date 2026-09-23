@@ -1,5 +1,7 @@
 # PokeAssist iOS prototype
 
+Version 0.5.24 shows IV grades as a purple star for 100%, yellow star for 90–99%, orange half-star for 80–89%, and no badge below 80%.
+
 Version 0.5.23 includes IV-grade badges in the compact Dynamic Island and limits that row to five prioritized symbols to avoid clipped slivers.
 
 Version 0.5.22 refreshes the existing ScreenCaptureKit stream every four minutes instead of creating a new stream from a cached picker filter.

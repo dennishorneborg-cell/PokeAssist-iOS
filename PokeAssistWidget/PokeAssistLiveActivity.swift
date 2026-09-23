@@ -289,11 +289,11 @@ struct PokeAssistLiveActivity: Widget {
 
         switch percentage {
         case 100:
-            return ("star.fill", .yellow)
+            return ("star.fill", .purple)
         case 90..<100:
+            return ("star.fill", .yellow)
+        case 80..<90:
             return ("star.leadinghalf.filled", .orange)
-        case 0..<80:
-            return ("chart.bar.fill", .red)
         default:
             return nil
         }
