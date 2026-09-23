@@ -6,12 +6,15 @@ import ScreenCaptureKit
 private final class FrameDeliveryGate: @unchecked Sendable {
     private let lock = NSLock()
     private var isFramePending = false
+    private var lastAcceptedTime: TimeInterval = 0
 
     func begin() -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        guard !isFramePending else { return false }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard !isFramePending, now - lastAcceptedTime >= 1.0 / 12.0 else { return false }
         isFramePending = true
+        lastAcceptedTime = now
         return true
     }
 
@@ -110,11 +113,6 @@ final class CaptureManager: NSObject, ObservableObject {
         }
 
         let configuration = SCStreamConfiguration()
-        // OCR needs only a few fresh samples per second. Limiting delivery at
-        // the source saves energy and prevents system capture buffers from
-        // outpacing the recognition pipeline during long sessions.
-        configuration.minimumFrameInterval = CMTime(value: 1, timescale: 12)
-        configuration.queueDepth = 3
 
         let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
 
@@ -459,8 +457,8 @@ extension CaptureManager: SCStreamOutput {
             return
         }
 
-        // Never enqueue an unbounded chain of MainActor tasks. When the app is
-        // busy, drop an old capture callback and analyze the next fresh frame.
+        // Never enqueue an unbounded chain of MainActor tasks. Sample at most
+        // 12 fresh frames per second and drop callbacks while one is pending.
         let deliveryGate = frameDeliveryGate
         guard deliveryGate.begin() else { return }
 
