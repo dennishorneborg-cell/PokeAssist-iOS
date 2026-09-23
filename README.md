@@ -1,5 +1,7 @@
 # PokeAssist iOS prototype
 
+Version 0.5.22 refreshes the existing ScreenCaptureKit stream every four minutes instead of creating a new stream from a cached picker filter.
+
 Version 0.5.21 displays an IV-grade SF Symbol in the minimal Dynamic Island and a larger exact IV percentage in the compact trailing region.
 
 Version 0.5.20 restarts the ScreenCaptureKit stream every four minutes using the screen selected in the system picker, without repeatedly prompting for selection.

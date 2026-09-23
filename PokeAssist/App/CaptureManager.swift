@@ -176,6 +176,7 @@ final class CaptureManager: NSObject, ObservableObject {
 
     private var stream: SCStream?
     private var selectedContentFilter: SCContentFilter?
+    private var refreshingStream: SCStream?
     private var totalFrameCount = 0
     private var captureStartedAt: TimeInterval?
     private var diagnosticsTask: Task<Void, Never>?
@@ -268,45 +269,7 @@ final class CaptureManager: NSObject, ObservableObject {
         do {
             try newStream.addStreamOutput(self, type: .screen, sampleHandlerQueue: sampleQueue)
             try await newStream.startCapture()
-
-            stream = newStream
-            totalFrameCount = 0
-            frameCount = 0
-            captureStartedAt = ProcessInfo.processInfo.systemUptime
-            frameDeliveryGate.reset()
-            frameAnalyzer.resetMetrics()
-            appearanceAnalyzer.resetMetrics()
-            liveActivityController.resetMetrics()
-            lastDiagnosticSample = nil
-            diagnostics = CaptureDiagnostics()
-            isCapturing = true
-            isPreparing = false
-            status = "Capturing full display"
-            latestRecognition = nil
-            isShinyDetected = false
-            isEventDetected = false
-            pendingRecognitionIdentity = nil
-            pendingRecognitionStartedAt = nil
-            lastRecognitionConfirmationMilliseconds = nil
-            recognitionCandidateRestarts = 0
-            consecutiveRecognitionMatches = 0
-            consecutiveNonPokemonResults = 0
-            combatPowerIsCached = false
-            currentObservedScreen = .unknown
-            shinyPositiveStreak = 0
-            shinyNegativeStreak = 0
-            eventPositiveStreak = 0
-            eventNegativeStreak = 0
-            lastCombatPowerBySpecies.removeAll(keepingCapacity: true)
-            liveActivityStatus = await liveActivityController.start(
-                frameCount: 0,
-                status: "Capturing",
-                recognitionSummary: "Scanning Pokémon GO",
-                presentation: .scanning
-            )
-            startDiagnosticsSampling()
-            startAutomaticCaptureRefreshIfNeeded()
-            refreshDiagnostics()
+            await captureDidStart(newStream)
         } catch {
             stream = nil
             captureRefreshTask?.cancel()
@@ -343,32 +306,68 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     private func restartCaptureStream() async {
-        guard isCapturing, let filter = selectedContentFilter else { return }
+        guard isCapturing, let activeStream = stream else { return }
 
         isPreparing = true
         status = "Refreshing capture"
-        let previousStream = stream
-        stream = nil
+        refreshingStream = activeStream
 
-        if let previousStream {
-            do {
-                try await previousStream.stopCapture()
-            } catch {
-                finishCapture(
-                    status: "Capture refresh failed",
-                    errorMessage: error.localizedDescription
-                )
-                return
-            }
-            try? previousStream.removeStreamOutput(self, type: .screen)
+        do {
+            try await activeStream.stopCapture()
+            try await activeStream.startCapture()
+        } catch {
+            refreshingStream = nil
+            finishCapture(
+                status: "Capture refresh failed",
+                errorMessage: error.localizedDescription
+            )
+            return
         }
 
-        guard isPreparing, selectedContentFilter != nil else { return }
-        await startCapture(with: filter)
-        if isCapturing {
-            automaticCaptureRestarts += 1
-            refreshDiagnostics()
-        }
+        refreshingStream = nil
+        automaticCaptureRestarts += 1
+        await captureDidStart(activeStream)
+    }
+
+    private func captureDidStart(_ activeStream: SCStream) async {
+        stream = activeStream
+        totalFrameCount = 0
+        frameCount = 0
+        captureStartedAt = ProcessInfo.processInfo.systemUptime
+        frameDeliveryGate.reset()
+        frameAnalyzer.resetMetrics()
+        appearanceAnalyzer.resetMetrics()
+        liveActivityController.resetMetrics()
+        lastDiagnosticSample = nil
+        diagnostics = CaptureDiagnostics()
+        isCapturing = true
+        isPreparing = false
+        status = "Capturing full display"
+        latestRecognition = nil
+        isShinyDetected = false
+        isEventDetected = false
+        pendingRecognitionIdentity = nil
+        pendingRecognitionStartedAt = nil
+        lastRecognitionConfirmationMilliseconds = nil
+        recognitionCandidateRestarts = 0
+        consecutiveRecognitionMatches = 0
+        consecutiveNonPokemonResults = 0
+        combatPowerIsCached = false
+        currentObservedScreen = .unknown
+        shinyPositiveStreak = 0
+        shinyNegativeStreak = 0
+        eventPositiveStreak = 0
+        eventNegativeStreak = 0
+        lastCombatPowerBySpecies.removeAll(keepingCapacity: true)
+        liveActivityStatus = await liveActivityController.start(
+            frameCount: 0,
+            status: "Capturing",
+            recognitionSummary: "Scanning Pokémon GO",
+            presentation: .scanning
+        )
+        startDiagnosticsSampling()
+        startAutomaticCaptureRefreshIfNeeded()
+        refreshDiagnostics()
     }
 
     private func receivedFrame(pixelBuffer: CVPixelBuffer) {
@@ -715,6 +714,7 @@ final class CaptureManager: NSObject, ObservableObject {
         captureRefreshTask?.cancel()
         captureRefreshTask = nil
         selectedContentFilter = nil
+        refreshingStream = nil
         isCapturing = false
         isPreparing = false
         status = "Stopped"
@@ -735,6 +735,7 @@ final class CaptureManager: NSObject, ObservableObject {
         captureRefreshTask?.cancel()
         captureRefreshTask = nil
         selectedContentFilter = nil
+        refreshingStream = nil
         refreshDiagnostics()
         captureStartedAt = nil
         if let activeStream = stream {
@@ -803,6 +804,7 @@ extension CaptureManager: SCStreamDelegate {
     nonisolated func stream(_ stream: SCStream, didStopWithError error: any Error) {
         Task { @MainActor [weak self] in
             guard let self, self.stream === stream else { return }
+            guard self.refreshingStream !== stream else { return }
             self.captureFailed(error)
         }
     }
