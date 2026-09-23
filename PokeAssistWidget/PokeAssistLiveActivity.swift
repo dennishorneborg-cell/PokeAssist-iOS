@@ -83,7 +83,7 @@ struct PokeAssistLiveActivity: Widget {
                 compactBadges(context.state.presentation)
             } compactTrailing: {
                 Text(compactMetric(context.state))
-                    .font(.caption2.monospacedDigit().bold())
+                    .font(.system(size: 13, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -173,10 +173,15 @@ struct PokeAssistLiveActivity: Widget {
     private func minimalBadges(_ presentation: PokeAssistActivityPresentation) -> some View {
         // ScreenCaptureKit's recording indicator makes iOS choose the minimal
         // Live Activity presentation. Scale the SF Symbols to the available
-        // trait count so the common capture + Shiny + event case stays legible.
+        // trait and appraisal-grade count so they stay legible.
         HStack(spacing: 0) {
             Image(systemName: presentation.mode == .appraisal ? "chart.bar.fill" : "viewfinder.circle.fill")
                 .foregroundStyle(.green)
+
+            if let rating = ivRatingBadge(presentation) {
+                Image(systemName: rating.symbol)
+                    .foregroundStyle(rating.color)
+            }
 
             if presentation.shinyDetected {
                 Image(systemName: "sparkles")
@@ -229,11 +234,32 @@ struct PokeAssistLiveActivity: Widget {
     }
 
     private func minimalBadgePointSize(_ presentation: PokeAssistActivityPresentation) -> CGFloat {
-        switch badgeCount(presentation) {
+        let count = badgeCount(presentation) + (ivRatingBadge(presentation) == nil ? 0 : 1)
+        switch count {
         case 1...3: return 11
         case 4: return 9.5
         case 5: return 8.5
         default: return 6.5
+        }
+    }
+
+    private func ivRatingBadge(
+        _ presentation: PokeAssistActivityPresentation
+    ) -> (symbol: String, color: Color)? {
+        guard presentation.mode == .appraisal,
+              let percentage = presentation.ivPercentage else {
+            return nil
+        }
+
+        switch percentage {
+        case 100:
+            return ("star.fill", .yellow)
+        case 90..<100:
+            return ("star.leadinghalf.filled", .orange)
+        case 0..<80:
+            return ("chart.bar.fill", .red)
+        default:
+            return nil
         }
     }
 
