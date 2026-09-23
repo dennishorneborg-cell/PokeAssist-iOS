@@ -332,19 +332,12 @@ final class CaptureManager: NSObject, ObservableObject {
             }
         }
 
-        // Updating the UI and Live Activity less often keeps the prototype lightweight.
+        // Update the in-app frame counter periodically, but keep frame-only
+        // changes out of ActivityKit. Frequent Live Activity updates can be
+        // coalesced or delayed by the system and carry no Pokémon information.
         guard totalFrameCount == 1 || totalFrameCount.isMultiple(of: 10) else { return }
 
         frameCount = totalFrameCount
-
-        if totalFrameCount == 1 || totalFrameCount.isMultiple(of: 10) {
-            liveActivityController.update(
-                frameCount: totalFrameCount,
-                status: "Capturing",
-                recognitionSummary: currentRecognitionSummary(fallback: "Scanning Pokémon GO"),
-                presentation: currentActivityPresentation
-            )
-        }
     }
 
     private func startDiagnosticsSampling() {
