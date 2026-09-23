@@ -43,17 +43,41 @@ struct PokeAssistLiveActivity: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(expandedMetric(context.state))
-                        .font(.headline.monospacedDigit())
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        if let combatPower = context.state.presentation.combatPower {
+                            Text("CP \(combatPower)")
+                                .font(.headline.monospacedDigit())
+                        } else if context.state.presentation.mode == .scanning {
+                            Text(context.state.frameCount.formatted())
+                                .font(.headline.monospacedDigit())
+                        } else {
+                            Text("CP ?")
+                                .font(.headline.monospacedDigit())
+                        }
+
+                        if context.state.presentation.mode == .appraisal,
+                           let percentage = context.state.presentation.ivPercentage {
+                            Text("IV \(percentage)%")
+                                .font(.caption.monospacedDigit())
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text(context.state.recognitionSummary)
-                        .font(.caption)
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(context.state.recognitionSummary)
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                        if context.state.presentation.combatPowerIsCached == true {
+                            Text("CP zuletzt erkannt – bei Pokémon-Wechsel prüfen")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             } compactLeading: {
                 compactBadges(context.state.presentation)
@@ -191,16 +215,6 @@ struct PokeAssistLiveActivity: Widget {
         }
         if let combatPower = state.presentation.combatPower {
             return String(combatPower)
-        }
-        return state.frameCount.formatted()
-    }
-
-    private func expandedMetric(_ state: PokeAssistAttributes.ContentState) -> String {
-        if state.presentation.mode == .appraisal, let percentage = state.presentation.ivPercentage {
-            return "IV \(percentage)%"
-        }
-        if let combatPower = state.presentation.combatPower {
-            return "CP \(combatPower)"
         }
         return state.frameCount.formatted()
     }

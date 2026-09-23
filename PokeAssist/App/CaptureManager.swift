@@ -54,6 +54,7 @@ final class CaptureManager: NSObject, ObservableObject {
     private var pendingRecognitionIdentity: RecognitionIdentity?
     private var consecutiveRecognitionMatches = 0
     private var consecutiveNonPokemonResults = 0
+    private var combatPowerIsCached = false
     private var currentObservedScreen: PokemonRecognition.Screen = .unknown
     private var appearanceSamples: [PokemonAppearanceObservation] = []
 
@@ -132,6 +133,7 @@ final class CaptureManager: NSObject, ObservableObject {
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
             consecutiveNonPokemonResults = 0
+            combatPowerIsCached = false
             currentObservedScreen = .unknown
             appearanceSamples.removeAll(keepingCapacity: true)
             liveActivityStatus = await liveActivityController.start(
@@ -190,7 +192,8 @@ final class CaptureManager: NSObject, ObservableObject {
         }
     }
 
-    private func applyRecognition(_ recognition: PokemonRecognition) {
+    private func applyRecognition(_ freshRecognition: PokemonRecognition) {
+        let (recognition, cachedCombatPower) = preservingCoveredCombatPower(in: freshRecognition)
         if recognition.screen != .pokeAssist, recognition.screen != .unknown {
             currentObservedScreen = recognition.screen
         }
@@ -199,6 +202,7 @@ final class CaptureManager: NSObject, ObservableObject {
             pendingRecognitionIdentity = nil
             consecutiveRecognitionMatches = 0
             consecutiveNonPokemonResults = 0
+            combatPowerIsCached = false
             return
         }
 
@@ -251,9 +255,10 @@ final class CaptureManager: NSObject, ObservableObject {
             }
         }
 
-        guard recognition != latestRecognition else { return }
+        guard recognition != latestRecognition || cachedCombatPower != combatPowerIsCached else { return }
 
         latestRecognition = recognition
+        combatPowerIsCached = cachedCombatPower
         liveActivityController.update(
             frameCount: frameCount,
             status: "Capturing",
@@ -263,6 +268,35 @@ final class CaptureManager: NSObject, ObservableObject {
             ),
             presentation: activityPresentation(for: recognition)
         )
+    }
+
+    private func preservingCoveredCombatPower(
+        in recognition: PokemonRecognition
+    ) -> (PokemonRecognition, Bool) {
+        // The expanded Island covers Pokémon GO's CP label. Retain a value
+        // previously read for the same species during appraisal, but label it
+        // as cached because another individual of that species may be selected.
+        guard recognition.screen == .appraisal,
+              recognition.combatPower == nil,
+              let previous = latestRecognition,
+              previous.isPokemonResult,
+              let name = recognition.pokemonName,
+              name == previous.pokemonName,
+              let combatPower = previous.combatPower else {
+            return (recognition, false)
+        }
+
+        return (PokemonRecognition(
+            screen: recognition.screen,
+            pokemonName: recognition.pokemonName,
+            combatPower: combatPower,
+            confidence: recognition.confidence,
+            observedText: recognition.observedText,
+            individualValues: recognition.individualValues,
+            protection: recognition.protection,
+            sizeClass: recognition.sizeClass,
+            isDynamax: recognition.isDynamax
+        ), true)
     }
 
     private func applyAppearanceObservation(_ observation: PokemonAppearanceObservation) {
@@ -343,6 +377,7 @@ final class CaptureManager: NSObject, ObservableObject {
             mode: mode,
             pokemonName: recognition.pokemonName,
             combatPower: recognition.combatPower,
+            combatPowerIsCached: combatPowerIsCached,
             ivAttack: recognition.individualValues?.attack,
             ivDefense: recognition.individualValues?.defense,
             ivStamina: recognition.individualValues?.stamina,

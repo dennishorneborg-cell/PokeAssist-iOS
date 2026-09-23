@@ -290,8 +290,12 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
                     .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
                     .uppercased()
                     .filter { $0.isLetter || $0.isNumber }
+                // Pokémon GO centers CP above the Pokémon. Ignore CP text
+                // rendered at the right edge by our own expanded Island.
                 return line.boundingBox.midY > 0.78
                     && line.boundingBox.midY < 0.95
+                    && line.boundingBox.midX > 0.25
+                    && line.boundingBox.midX < 0.75
                     && (compact.hasPrefix("CP") || compact.hasPrefix("WP"))
             }
             .sorted { $0.confidence > $1.confidence }

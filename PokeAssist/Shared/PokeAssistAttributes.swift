@@ -29,6 +29,8 @@ struct PokeAssistActivityPresentation: Codable, Hashable {
     var mode: PokeAssistActivityMode
     var pokemonName: String?
     var combatPower: Int?
+    // Optional so activities persisted by earlier builds still decode.
+    var combatPowerIsCached: Bool?
     var ivAttack: Int?
     var ivDefense: Int?
     var ivStamina: Int?
@@ -44,6 +46,7 @@ struct PokeAssistActivityPresentation: Codable, Hashable {
         mode: .scanning,
         pokemonName: nil,
         combatPower: nil,
+        combatPowerIsCached: false,
         ivAttack: nil,
         ivDefense: nil,
         ivStamina: nil,
