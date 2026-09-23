@@ -12,7 +12,7 @@ private final class FrameDeliveryGate: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         let now = ProcessInfo.processInfo.systemUptime
-        guard !isFramePending, now - lastAcceptedTime >= 1.0 / 12.0 else { return false }
+        guard !isFramePending, now - lastAcceptedTime >= 1.0 / 4.0 else { return false }
         isFramePending = true
         lastAcceptedTime = now
         return true
@@ -114,6 +114,10 @@ final class CaptureManager: NSObject, ObservableObject {
         }
 
         let configuration = SCStreamConfiguration()
+        // Avoid capturing at the display's maximum rate when analysis only
+        // needs a few fresh frames per second. This also limits how many full-
+        // resolution buffers ScreenCaptureKit produces during long sessions.
+        configuration.minimumFrameInterval = CMTime(value: 1, timescale: 4)
 
         let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
 
@@ -492,8 +496,8 @@ extension CaptureManager: SCStreamOutput {
             return
         }
 
-        // Never enqueue an unbounded chain of MainActor tasks. Sample at most
-        // 12 fresh frames per second and drop callbacks while one is pending.
+        // Never enqueue an unbounded chain of MainActor tasks. The stream is
+        // configured for 4 fps; this gate is a second guard against bursts.
         let deliveryGate = frameDeliveryGate
         guard deliveryGate.begin() else { return }
 
