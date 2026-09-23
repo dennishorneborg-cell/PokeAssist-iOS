@@ -114,10 +114,6 @@ final class CaptureManager: NSObject, ObservableObject {
         }
 
         let configuration = SCStreamConfiguration()
-        // Avoid capturing at the display's maximum rate when analysis only
-        // needs a few fresh frames per second. This also limits how many full-
-        // resolution buffers ScreenCaptureKit produces during long sessions.
-        configuration.minimumFrameInterval = CMTime(value: 1, timescale: 4)
 
         let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
 
@@ -496,8 +492,9 @@ extension CaptureManager: SCStreamOutput {
             return
         }
 
-        // Never enqueue an unbounded chain of MainActor tasks. The stream is
-        // configured for 4 fps; this gate is a second guard against bursts.
+        // ScreenCaptureKit's iOS configuration doesn't expose a frame-rate
+        // limit. Process at most 4 fresh frames per second and drop the rest
+        // before they can enqueue MainActor work or analysis.
         let deliveryGate = frameDeliveryGate
         guard deliveryGate.begin() else { return }
 
