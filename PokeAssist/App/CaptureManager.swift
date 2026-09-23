@@ -56,7 +56,11 @@ final class CaptureManager: NSObject, ObservableObject {
     private var consecutiveNonPokemonResults = 0
     private var combatPowerIsCached = false
     private var currentObservedScreen: PokemonRecognition.Screen = .unknown
-    private var appearanceSamples: [PokemonAppearanceObservation] = []
+    private var shinyPositiveStreak = 0
+    private var shinyNegativeStreak = 0
+    private var eventPositiveStreak = 0
+    private var eventNegativeStreak = 0
+    private var lastCombatPowerBySpecies: [String: Int] = [:]
 
     func presentCapturePicker() {
         guard !isCapturing, !isPreparing else { return }
@@ -135,7 +139,11 @@ final class CaptureManager: NSObject, ObservableObject {
             consecutiveNonPokemonResults = 0
             combatPowerIsCached = false
             currentObservedScreen = .unknown
-            appearanceSamples.removeAll(keepingCapacity: true)
+            shinyPositiveStreak = 0
+            shinyNegativeStreak = 0
+            eventPositiveStreak = 0
+            eventNegativeStreak = 0
+            lastCombatPowerBySpecies.removeAll(keepingCapacity: true)
             liveActivityStatus = await liveActivityController.start(
                 frameCount: 0,
                 status: "Capturing",
@@ -273,16 +281,21 @@ final class CaptureManager: NSObject, ObservableObject {
     private func preservingCoveredCombatPower(
         in recognition: PokemonRecognition
     ) -> (PokemonRecognition, Bool) {
-        // The expanded Island covers Pokémon GO's CP label. Retain a value
-        // previously read for the same species during appraisal, but label it
-        // as cached because another individual of that species may be selected.
-        guard recognition.screen == .appraisal,
-              recognition.combatPower == nil,
-              let previous = latestRecognition,
-              previous.isPokemonResult,
-              let name = recognition.pokemonName,
-              name == previous.pokemonName,
-              let combatPower = previous.combatPower else {
+        // The expanded Island can cover Pokémon GO's CP label on either
+        // Pokémon screen. Keep the last value by species for this capture
+        // session; always label a reused value as cached because a second
+        // individual of the same species can have different CP.
+        guard recognition.isPokemonResult,
+              let name = recognition.pokemonName else {
+            return (recognition, false)
+        }
+
+        if let combatPower = recognition.combatPower {
+            lastCombatPowerBySpecies[name] = combatPower
+            return (recognition, false)
+        }
+
+        guard let combatPower = lastCombatPowerBySpecies[name] else {
             return (recognition, false)
         }
 
@@ -306,16 +319,20 @@ final class CaptureManager: NSObject, ObservableObject {
               consecutiveRecognitionMatches >= 2,
               observation.pokemonName == recognition.pokemonName else { return }
 
-        appearanceSamples.append(observation)
-        if appearanceSamples.count > 5 {
-            appearanceSamples.removeFirst(appearanceSamples.count - 5)
-        }
+        // Confirm after two matching samples, but also clear a confirmed trait
+        // after two contrary samples. Sticky OR logic would otherwise carry a
+        // Shiny/event result over to another individual of the same species.
+        shinyPositiveStreak = observation.shinyDetected ? shinyPositiveStreak + 1 : 0
+        shinyNegativeStreak = observation.shinyDetected ? 0 : shinyNegativeStreak + 1
+        eventPositiveStreak = observation.eventDetected ? eventPositiveStreak + 1 : 0
+        eventNegativeStreak = observation.eventDetected ? 0 : eventNegativeStreak + 1
 
-        // A trait is published only after two separate frames agree. This is
-        // fast enough for a compact glance while rejecting a single animation
-        // frame or compression artefact.
-        let shinyConfirmed = isShinyDetected || appearanceSamples.filter(\.shinyDetected).count >= 2
-        let eventConfirmed = isEventDetected || appearanceSamples.filter(\.eventDetected).count >= 2
+        let shinyConfirmed = shinyPositiveStreak >= 2
+            ? true
+            : (shinyNegativeStreak >= 2 ? false : isShinyDetected)
+        let eventConfirmed = eventPositiveStreak >= 2
+            ? true
+            : (eventNegativeStreak >= 2 ? false : isEventDetected)
         guard shinyConfirmed != isShinyDetected || eventConfirmed != isEventDetected else { return }
 
         isShinyDetected = shinyConfirmed
@@ -332,7 +349,10 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     private func resetAppearanceEvidence() {
-        appearanceSamples.removeAll(keepingCapacity: true)
+        shinyPositiveStreak = 0
+        shinyNegativeStreak = 0
+        eventPositiveStreak = 0
+        eventNegativeStreak = 0
         isShinyDetected = false
         isEventDetected = false
     }
