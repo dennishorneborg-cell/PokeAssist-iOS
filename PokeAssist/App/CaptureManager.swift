@@ -182,7 +182,7 @@ final class CaptureManager: NSObject, ObservableObject {
 
         frameCount = totalFrameCount
 
-        if totalFrameCount == 1 || totalFrameCount.isMultiple(of: 30) {
+        if totalFrameCount == 1 || totalFrameCount.isMultiple(of: 10) {
             liveActivityController.update(
                 frameCount: totalFrameCount,
                 status: "Capturing",
