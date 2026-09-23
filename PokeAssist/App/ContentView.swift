@@ -9,6 +9,7 @@ struct ContentView: View {
                 VStack(spacing: 24) {
                     header
                     statusCard
+                    diagnosticsCard
                     recognitionCard
                     controls
                     instructions
@@ -172,6 +173,83 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var diagnosticsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Capture diagnostics (local)", systemImage: "waveform.path.ecg")
+                .font(.headline)
+
+            diagnosticRow("Capture time", value: captureManager.diagnostics.elapsed)
+            diagnosticRow(
+                "Thermal state",
+                value: captureManager.diagnostics.thermalState,
+                tint: captureManager.diagnostics.thermalState == "Critical"
+                    ? .red
+                    : (captureManager.diagnostics.thermalState == "Hot" ? .orange : .primary)
+            )
+            diagnosticRow(
+                "App memory",
+                value: captureManager.diagnostics.memoryMB == 0
+                    ? "—"
+                    : "\(captureManager.diagnostics.memoryMB) MB"
+            )
+            diagnosticRow(
+                "Stream / processed",
+                value: String(
+                    format: "%.1f / %.1f fps",
+                    captureManager.diagnostics.callbacksPerSecond,
+                    captureManager.diagnostics.processedPerSecond
+                )
+            )
+            diagnosticRow(
+                "Frames gated",
+                value: "\(captureManager.diagnostics.droppedPercent)%"
+            )
+            diagnosticRow(
+                "Vision avg / last",
+                value: String(
+                    format: "%.0f / %.0f ms",
+                    captureManager.diagnostics.visionAverageMilliseconds,
+                    captureManager.diagnostics.visionLastMilliseconds
+                )
+            )
+            diagnosticRow(
+                "Vision skipped",
+                value: captureManager.diagnostics.visionSkipped.formatted()
+            )
+            diagnosticRow(
+                "Appearance avg / last",
+                value: String(
+                    format: "%.0f / %.0f ms",
+                    captureManager.diagnostics.appearanceAverageMilliseconds,
+                    captureManager.diagnostics.appearanceLastMilliseconds
+                )
+            )
+            diagnosticRow(
+                "Appearance skipped",
+                value: captureManager.diagnostics.appearanceSkipped.formatted()
+            )
+
+            Text("Sampled every 10 seconds. Measurements stay on this iPhone; no frames or diagnostics are uploaded.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func diagnosticRow(_ title: String, value: String, tint: Color = .secondary) -> some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            Text(value)
+                .monospacedDigit()
+                .foregroundStyle(tint)
+        }
+        .font(.subheadline)
     }
 
     private var controls: some View {

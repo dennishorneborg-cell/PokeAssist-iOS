@@ -1,5 +1,6 @@
 import CoreMedia
 import CoreVideo
+import Darwin
 import Foundation
 import ScreenCaptureKit
 
@@ -7,12 +8,18 @@ private final class FrameDeliveryGate: @unchecked Sendable {
     private let lock = NSLock()
     private var isFramePending = false
     private var lastAcceptedTime: TimeInterval = 0
+    private var callbackCount = 0
+    private var droppedCount = 0
 
     func begin() -> Bool {
         lock.lock()
         defer { lock.unlock() }
+        callbackCount += 1
         let now = ProcessInfo.processInfo.systemUptime
-        guard !isFramePending, now - lastAcceptedTime >= 1.0 / 4.0 else { return false }
+        guard !isFramePending, now - lastAcceptedTime >= 1.0 / 4.0 else {
+            droppedCount += 1
+            return false
+        }
         isFramePending = true
         lastAcceptedTime = now
         return true
@@ -23,6 +30,36 @@ private final class FrameDeliveryGate: @unchecked Sendable {
         isFramePending = false
         lock.unlock()
     }
+
+    func reset() {
+        lock.lock()
+        isFramePending = false
+        lastAcceptedTime = 0
+        callbackCount = 0
+        droppedCount = 0
+        lock.unlock()
+    }
+
+    func counts() -> (callbacks: Int, dropped: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (callbackCount, droppedCount)
+    }
+}
+
+struct CaptureDiagnostics {
+    var elapsed = "—"
+    var thermalState = "—"
+    var memoryMB = 0
+    var callbacksPerSecond = 0.0
+    var processedPerSecond = 0.0
+    var droppedPercent = 0
+    var visionAverageMilliseconds = 0.0
+    var visionLastMilliseconds = 0.0
+    var visionSkipped = 0
+    var appearanceAverageMilliseconds = 0.0
+    var appearanceLastMilliseconds = 0.0
+    var appearanceSkipped = 0
 }
 
 @MainActor
@@ -41,6 +78,7 @@ final class CaptureManager: NSObject, ObservableObject {
     @Published private(set) var latestRecognition: PokemonRecognition?
     @Published private(set) var isShinyDetected = false
     @Published private(set) var isEventDetected = false
+    @Published private(set) var diagnostics = CaptureDiagnostics()
 
     private let picker = SCContentSharingPicker.shared
     private let sampleQueue = DispatchQueue(label: "de.schroeder.PokeAssist.screen-samples", qos: .userInitiated)
@@ -51,6 +89,9 @@ final class CaptureManager: NSObject, ObservableObject {
 
     private var stream: SCStream?
     private var totalFrameCount = 0
+    private var captureStartedAt: TimeInterval?
+    private var diagnosticsTask: Task<Void, Never>?
+    private var lastDiagnosticSample: (time: TimeInterval, callbacks: Int, processed: Int)?
     private var pendingRecognitionIdentity: RecognitionIdentity?
     private var consecutiveRecognitionMatches = 0
     private var consecutiveNonPokemonResults = 0
@@ -128,6 +169,12 @@ final class CaptureManager: NSObject, ObservableObject {
             stream = newStream
             totalFrameCount = 0
             frameCount = 0
+            captureStartedAt = ProcessInfo.processInfo.systemUptime
+            frameDeliveryGate.reset()
+            frameAnalyzer.resetMetrics()
+            appearanceAnalyzer.resetMetrics()
+            lastDiagnosticSample = nil
+            diagnostics = CaptureDiagnostics()
             isCapturing = true
             isPreparing = false
             status = "Capturing full display"
@@ -150,6 +197,8 @@ final class CaptureManager: NSObject, ObservableObject {
                 recognitionSummary: "Scanning Pokémon GO",
                 presentation: .scanning
             )
+            startDiagnosticsSampling()
+            refreshDiagnostics()
         } catch {
             stream = nil
             isCapturing = false
@@ -198,6 +247,72 @@ final class CaptureManager: NSObject, ObservableObject {
                 presentation: currentActivityPresentation
             )
         }
+    }
+
+    private func startDiagnosticsSampling() {
+        diagnosticsTask?.cancel()
+        diagnosticsTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                guard !Task.isCancelled, let self, self.isCapturing else { return }
+                self.refreshDiagnostics()
+            }
+        }
+    }
+
+    private func refreshDiagnostics() {
+        let now = ProcessInfo.processInfo.systemUptime
+        let counts = frameDeliveryGate.counts()
+        let uptime = captureStartedAt.map { max(0, now - $0) } ?? 0
+        let elapsedSeconds = Int(uptime)
+        let elapsed = String(format: "%02d:%02d", elapsedSeconds / 60, elapsedSeconds % 60)
+        let thermal: String
+        switch ProcessInfo.processInfo.thermalState {
+        case .nominal: thermal = "Normal"
+        case .fair: thermal = "Warm"
+        case .serious: thermal = "Hot"
+        case .critical: thermal = "Critical"
+        @unknown default: thermal = "Unknown"
+        }
+
+        let previous = lastDiagnosticSample
+        let interval = previous.map { max(0.001, now - $0.time) } ?? 0
+        let callbacksPerSecond = previous.map { Double(counts.callbacks - $0.callbacks) / interval } ?? 0
+        let processedPerSecond = previous.map { Double(totalFrameCount - $0.processed) / interval } ?? 0
+        let denominator = counts.callbacks
+        let droppedPercent = denominator > 0 ? counts.dropped * 100 / denominator : 0
+        let analysis = frameAnalyzer.metricsSnapshot()
+        let appearance = appearanceAnalyzer.metricsSnapshot()
+
+        diagnostics = CaptureDiagnostics(
+            elapsed: elapsed,
+            thermalState: thermal,
+            memoryMB: Self.currentMemoryFootprintMB(),
+            callbacksPerSecond: callbacksPerSecond,
+            processedPerSecond: processedPerSecond,
+            droppedPercent: droppedPercent,
+            visionAverageMilliseconds: analysis.averageMilliseconds,
+            visionLastMilliseconds: analysis.lastMilliseconds,
+            visionSkipped: analysis.skipped,
+            appearanceAverageMilliseconds: appearance.averageMilliseconds,
+            appearanceLastMilliseconds: appearance.lastMilliseconds,
+            appearanceSkipped: appearance.skipped
+        )
+        lastDiagnosticSample = (now, counts.callbacks, totalFrameCount)
+    }
+
+    private static func currentMemoryFootprintMB() -> Int {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(
+            MemoryLayout<mach_task_basic_info>.size / MemoryLayout<integer_t>.size
+        )
+        let result = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { rebound in
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), rebound, &count)
+            }
+        }
+        guard result == KERN_SUCCESS else { return 0 }
+        return Int(info.resident_size / 1_048_576)
     }
 
     private func applyRecognition(_ freshRecognition: PokemonRecognition) {
@@ -427,6 +542,10 @@ final class CaptureManager: NSObject, ObservableObject {
     }
 
     private func finishCapture(status: String, errorMessage: String?) {
+        diagnosticsTask?.cancel()
+        diagnosticsTask = nil
+        refreshDiagnostics()
+        captureStartedAt = nil
         if let activeStream = stream {
             try? activeStream.removeStreamOutput(self, type: .screen)
         }

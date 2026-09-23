@@ -59,6 +59,25 @@ final class PokemonAppearanceAnalyzer: @unchecked Sendable {
 
     private var isAnalyzing = false
     private var lastAnalysisDate = Date.distantPast
+    private var analysisCount = 0
+    private var skippedCount = 0
+    private var averageAnalysisMilliseconds = 0.0
+    private var lastAnalysisMilliseconds = 0.0
+
+    func resetMetrics() {
+        stateLock.lock()
+        analysisCount = 0
+        skippedCount = 0
+        averageAnalysisMilliseconds = 0
+        lastAnalysisMilliseconds = 0
+        stateLock.unlock()
+    }
+
+    func metricsSnapshot() -> (averageMilliseconds: Double, lastMilliseconds: Double, skipped: Int) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return (averageAnalysisMilliseconds, lastAnalysisMilliseconds, skippedCount)
+    }
 
     func submit(
         pixelBuffer: CVPixelBuffer,
@@ -70,6 +89,7 @@ final class PokemonAppearanceAnalyzer: @unchecked Sendable {
         let now = Date()
         stateLock.lock()
         guard !isAnalyzing, now.timeIntervalSince(lastAnalysisDate) >= minimumAnalysisInterval else {
+            skippedCount += 1
             stateLock.unlock()
             return
         }
@@ -78,11 +98,20 @@ final class PokemonAppearanceAnalyzer: @unchecked Sendable {
         stateLock.unlock()
 
         analysisQueue.async { [self] in
+            let startTime = ProcessInfo.processInfo.systemUptime
             let observation = autoreleasepool {
                 analyze(pixelBuffer: pixelBuffer, pokemonName: pokemonName, rule: rule)
             }
+            let durationMilliseconds = (ProcessInfo.processInfo.systemUptime - startTime) * 1000
 
             stateLock.lock()
+            analysisCount += 1
+            lastAnalysisMilliseconds = durationMilliseconds
+            if analysisCount == 1 {
+                averageAnalysisMilliseconds = durationMilliseconds
+            } else {
+                averageAnalysisMilliseconds += (durationMilliseconds - averageAnalysisMilliseconds) / 8
+            }
             isAnalyzing = false
             stateLock.unlock()
 
