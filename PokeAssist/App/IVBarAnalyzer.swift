@@ -24,6 +24,8 @@ struct PokemonIVs: Equatable, Sendable {
 }
 
 enum IVBarAnalyzer {
+    private static let ciContext = CIContext(options: [.cacheIntermediates: false])
+
     private struct BarComponent {
         var startX: Int
         var endX: Int
@@ -103,7 +105,7 @@ enum IVBarAnalyzer {
         guard status == kCVReturnSuccess, let destination else { return nil }
 
         let sourceImage = CIImage(cvPixelBuffer: source)
-        CIContext(options: [.cacheIntermediates: false]).render(sourceImage, to: destination)
+        ciContext.render(sourceImage, to: destination)
         return destination
     }
 
