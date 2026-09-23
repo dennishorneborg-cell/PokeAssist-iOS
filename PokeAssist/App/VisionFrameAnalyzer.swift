@@ -133,7 +133,9 @@ final class VisionFrameAnalyzer: @unchecked Sendable {
         stateLock.unlock()
 
         analysisQueue.async { [self] in
-            let result = analyze(pixelBuffer: pixelBuffer)
+            let result = autoreleasepool {
+                analyze(pixelBuffer: pixelBuffer)
+            }
 
             stateLock.lock()
             isAnalyzing = false

@@ -54,6 +54,7 @@ final class PokemonAppearanceAnalyzer: @unchecked Sendable {
 
     private let analysisQueue = DispatchQueue(label: "de.schroeder.PokeAssist.appearance", qos: .userInitiated)
     private let stateLock = NSLock()
+    private let ciContext = CIContext(options: [.cacheIntermediates: false])
     private let minimumAnalysisInterval: TimeInterval = 0.18
 
     private var isAnalyzing = false
@@ -77,7 +78,9 @@ final class PokemonAppearanceAnalyzer: @unchecked Sendable {
         stateLock.unlock()
 
         analysisQueue.async { [self] in
-            let observation = analyze(pixelBuffer: pixelBuffer, pokemonName: pokemonName, rule: rule)
+            let observation = autoreleasepool {
+                analyze(pixelBuffer: pixelBuffer, pokemonName: pokemonName, rule: rule)
+            }
 
             stateLock.lock()
             isAnalyzing = false
@@ -258,7 +261,7 @@ final class PokemonAppearanceAnalyzer: @unchecked Sendable {
         guard status == kCVReturnSuccess, let destination else { return nil }
 
         let sourceImage = CIImage(cvPixelBuffer: source)
-        CIContext(options: [.cacheIntermediates: false]).render(sourceImage, to: destination)
+        ciContext.render(sourceImage, to: destination)
         return destination
     }
 }

@@ -3,6 +3,25 @@ import CoreVideo
 import Foundation
 import ScreenCaptureKit
 
+private final class FrameDeliveryGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isFramePending = false
+
+    func begin() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !isFramePending else { return false }
+        isFramePending = true
+        return true
+    }
+
+    func end() {
+        lock.lock()
+        isFramePending = false
+        lock.unlock()
+    }
+}
+
 @MainActor
 final class CaptureManager: NSObject, ObservableObject {
     private struct RecognitionIdentity: Equatable {
@@ -25,6 +44,7 @@ final class CaptureManager: NSObject, ObservableObject {
     private let liveActivityController = LiveActivityController()
     private let frameAnalyzer = VisionFrameAnalyzer()
     private let appearanceAnalyzer = PokemonAppearanceAnalyzer()
+    nonisolated private let frameDeliveryGate = FrameDeliveryGate()
 
     private var stream: SCStream?
     private var totalFrameCount = 0
@@ -90,6 +110,11 @@ final class CaptureManager: NSObject, ObservableObject {
         }
 
         let configuration = SCStreamConfiguration()
+        // OCR needs only a few fresh samples per second. Limiting delivery at
+        // the source saves energy and prevents system capture buffers from
+        // outpacing the recognition pipeline during long sessions.
+        configuration.minimumFrameInterval = CMTime(value: 1, timescale: 12)
+        configuration.queueDepth = 3
 
         let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
 
@@ -434,7 +459,13 @@ extension CaptureManager: SCStreamOutput {
             return
         }
 
+        // Never enqueue an unbounded chain of MainActor tasks. When the app is
+        // busy, drop an old capture callback and analyze the next fresh frame.
+        let deliveryGate = frameDeliveryGate
+        guard deliveryGate.begin() else { return }
+
         Task { @MainActor [weak self] in
+            defer { deliveryGate.end() }
             self?.receivedFrame(pixelBuffer: pixelBuffer)
         }
     }
